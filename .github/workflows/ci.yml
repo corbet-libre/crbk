@@ -3,11 +3,15 @@ name: ci
 on:
   push:
     branches: ["**"]
+    paths-ignore: ["**.md", "LICENSE", "LICENSES/**"]
   pull_request:
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   check:
@@ -19,7 +23,20 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
       - run: rustc --version
+      - name: Resolve dependencies on the runner
+        run: test -f Cargo.lock || cargo generate-lockfile
+      - name: Check dependency pins
+        run: |
+          node --test .github/check-pins.test.mjs
+          cargo metadata --locked --all-features --format-version 1 > dependency-metadata.json
+          node .github/check-pins.mjs dependency-metadata.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dependency-lock
+          path: Cargo.lock
       - run: cargo fmt --all --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
