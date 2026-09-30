@@ -87,8 +87,12 @@ fn integer(value: &serde_json::Number) -> Option<i128> {
         .or_else(|| value.as_u64().map(i128::from))
 }
 
+fn finite(value: &serde_json::Number) -> Option<f64> {
+    value.as_f64().filter(|n| n.is_finite())
+}
+
 impl Setting {
-    pub(crate) fn validate(&self) -> Result<()> {
+    fn validate_bounds(&self) -> Result<()> {
         let bounds = [&self.bounds.min, &self.bounds.max];
         if bounds.iter().any(|v| v.is_some()) {
             if !matches!(self.value_type, SettingType::Integer | SettingType::Number) {
@@ -99,22 +103,32 @@ impl Setting {
             {
                 return Err(Error::Invalid("noninteger bounds"));
             }
+            if self.value_type == SettingType::Number
+                && bounds.into_iter().flatten().any(|v| finite(v).is_none())
+            {
+                return Err(Error::Invalid("nonfinite bounds"));
+            }
             if let (Some(min), Some(max)) = (&self.bounds.min, &self.bounds.max) {
                 let reversed = if self.value_type == SettingType::Integer {
                     integer(min) > integer(max)
                 } else {
-                    min.as_f64() > max.as_f64()
+                    finite(min) > finite(max)
                 };
                 if reversed {
                     return Err(Error::Invalid("reversed bounds"));
                 }
             }
         }
+        Ok(())
+    }
+
+    pub(crate) fn validate(&self) -> Result<()> {
         self.check(&self.default)
     }
 
     /// Validate a whole value, including explicit null and numeric bounds.
     pub fn check(&self, value: &Value) -> Result<()> {
+        self.validate_bounds()?;
         if value.is_null() {
             return if self.nullable {
                 Ok(())
@@ -125,7 +139,7 @@ impl Setting {
         let valid = match self.value_type {
             SettingType::Boolean => value.is_boolean(),
             SettingType::Integer => value.as_number().and_then(integer).is_some(),
-            SettingType::Number => value.is_number(),
+            SettingType::Number => value.as_number().and_then(finite).is_some(),
             SettingType::String => value.is_string(),
             SettingType::Array => value.is_array(),
             SettingType::Object => value.is_object(),
@@ -150,17 +164,17 @@ impl Setting {
                         .and_then(integer)
                         .is_some_and(|max| n > max)
             } else {
-                let n = number.as_f64().ok_or(Error::Invalid("number"))?;
+                let n = finite(number).ok_or(Error::Invalid("number"))?;
                 self.bounds
                     .min
                     .as_ref()
-                    .and_then(|v| v.as_f64())
+                    .and_then(finite)
                     .is_some_and(|min| n < min)
                     || self
                         .bounds
                         .max
                         .as_ref()
-                        .and_then(|v| v.as_f64())
+                        .and_then(finite)
                         .is_some_and(|max| n > max)
             };
             if outside {

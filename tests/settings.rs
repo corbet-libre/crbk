@@ -184,3 +184,46 @@ fn control_settings_cannot_be_member_overridden() {
     assert!(b.define("gate/invalid/phone", s.clone()).is_err());
     assert!(b.define("action/enter", s).is_err());
 }
+
+#[test]
+fn direct_checks_reject_malformed_bounds_even_for_nullable_values() {
+    for (kind, min, max) in [
+        (SettingType::Integer, "0.5", "100"),
+        (SettingType::Integer, "20", "10"),
+        (SettingType::Number, "1e400", "1e401"),
+        (SettingType::Number, "-1e400", "10"),
+        (SettingType::Boolean, "0", "1"),
+    ] {
+        let mut s = setting(SettingKind::Technical, Layer::Member);
+        s.value_type = kind;
+        s.bounds = Bounds {
+            min: Some(min.parse().unwrap()),
+            max: Some(max.parse().unwrap()),
+        };
+        assert!(s.check(&json!(10)).is_err());
+        assert!(s.check(&Value::Null).is_err());
+        assert!(Rulebook::default().define("invalid", s).is_err());
+    }
+}
+
+#[test]
+fn forced_numbers_reject_nonfinite_values_and_restore_deviations() {
+    let mut s = setting(SettingKind::Technical, Layer::Member);
+    s.value_type = SettingType::Number;
+    s.bounds = Bounds::default();
+    let mut b = Rulebook::default();
+    b.define("number", s.clone()).unwrap();
+    b.set_community("number", Some(json!(25))).unwrap();
+    b.set_platform("number", platform(json!(50), true)).unwrap();
+    let huge: Value = serde_json::from_str("1e400").unwrap();
+    assert!(s.check(&huge).is_err());
+    assert!(
+        b.set_platform("number", platform(huge.clone(), true))
+            .is_err()
+    );
+    assert!(b.resolve(&[("number".into(), huge)].into()).is_err());
+    assert_eq!(b.resolve(&Values::new()).unwrap()["number"], json!(50));
+    b.set_platform("number", platform(json!(50), false))
+        .unwrap();
+    assert_eq!(b.resolve(&Values::new()).unwrap()["number"], json!(25));
+}
