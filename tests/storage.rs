@@ -289,7 +289,11 @@ async fn prospective_boundaries_reject_without_changing_published_revision() {
         let mut initial = change(book(), 10, 20);
         initial.policy_epoch = 2;
         store.append("alpha", None, initial).await.unwrap();
-        let mut failures = vec![change(book(), -1, 21), change(book(), 9, 21), change(book(), 21, 20)];
+        let mut failures = vec![
+            change(book(), -1, 21),
+            change(book(), 9, 21),
+            change(book(), 21, 20),
+        ];
         let mut epoch = change(book(), 21, 21);
         epoch.policy_epoch = u64::MAX;
         failures.push(epoch);
@@ -299,7 +303,15 @@ async fn prospective_boundaries_reject_without_changing_published_revision() {
         failures.push(change(book(), 21, 21));
         for invalid in failures {
             assert!(store.append("alpha", Some(1), invalid).await.is_err());
-            assert_eq!(store.load("alpha", Selection::Latest).await.unwrap().unwrap().revision, 1);
+            assert_eq!(
+                store
+                    .load("alpha", Selection::Latest)
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .revision,
+                1
+            );
         }
     }
     exercise(&MemoryStore::default()).await;
@@ -309,19 +321,36 @@ async fn prospective_boundaries_reject_without_changing_published_revision() {
 #[tokio::test]
 async fn malformed_imported_template_rows_cannot_be_loaded_or_extended() {
     for (table, key, payload) in [
-        ("template", "missing-separator", r#"{"base":{},"values":{}}"#),
+        (
+            "template",
+            "missing-separator",
+            r#"{"base":{},"values":{}}"#,
+        ),
         ("template", "standard@invalid", r#"{"base":{},"values":{}}"#),
         ("template_value", "missing-slash", "10"),
         ("template_value", "standard@1/quota", "10"),
     ] {
         let (_dir, db, store) = local().await;
-        store.append("alpha", None, change(book(), 0, 0)).await.unwrap();
-        db.community("alpha").unwrap().execute(
-            &format!("INSERT INTO {table} (revision, entry_key, payload) VALUES (?1, ?2, ?3)"),
-            crlt::params![1_i64, key, payload],
-        ).await.unwrap();
-        assert!(matches!(store.load("alpha", Selection::Latest).await, Err(Error::Corrupt)));
-        assert!(matches!(store.append("alpha", Some(1), change(book(), 1, 1)).await, Err(Error::Corrupt)));
+        store
+            .append("alpha", None, change(book(), 0, 0))
+            .await
+            .unwrap();
+        db.community("alpha")
+            .unwrap()
+            .execute(
+                &format!("INSERT INTO {table} (revision, entry_key, payload) VALUES (?1, ?2, ?3)"),
+                crlt::params![1_i64, key, payload],
+            )
+            .await
+            .unwrap();
+        assert!(matches!(
+            store.load("alpha", Selection::Latest).await,
+            Err(Error::Corrupt)
+        ));
+        assert!(matches!(
+            store.append("alpha", Some(1), change(book(), 1, 1)).await,
+            Err(Error::Corrupt)
+        ));
     }
 }
 
@@ -331,52 +360,107 @@ async fn incomplete_import_schema_and_invalid_pin_rows_fail_closed() {
         let directory = tempfile::tempdir().unwrap();
         let url = format!("file://{}", directory.path().join("import.db").display());
         let db = crlt::Db::open(crlt::Config::new(url, "")).await.unwrap();
-        let schema = SCHEMA.split(';').filter(|statement| {
-            !statement.contains(&format!("CREATE TABLE {omit} ("))
-                && !(omit == "rulebook_revision" && statement.contains("CREATE UNIQUE INDEX"))
-        }).collect::<Vec<_>>().join(";");
-        db.migrate(&[crlt::Migration::new(1, "incomplete", &schema)]).await.unwrap();
+        let schema = SCHEMA
+            .split(';')
+            .filter(|statement| {
+                !statement.contains(&format!("CREATE TABLE {omit} ("))
+                    && !(omit == "rulebook_revision" && statement.contains("CREATE UNIQUE INDEX"))
+            })
+            .collect::<Vec<_>>()
+            .join(";");
+        let migrated = db
+            .migrate(&[crlt::Migration::new(1, "incomplete", &schema)])
+            .await;
+        if omit == "rulebook_revision" {
+            // crlt rejects child foreign keys whose scoped parent is missing.
+            assert!(migrated.is_err());
+        } else {
+            migrated.unwrap();
+        }
         let store = LibsqlStore::new(db.clone());
-        assert!(matches!(store.check_query_plans("alpha").await, Err(Error::Storage)));
+        assert!(matches!(
+            store.check_query_plans("alpha").await,
+            Err(Error::Storage)
+        ));
         if omit != "rulebook_revision" {
             db.community("alpha").unwrap().execute(
                 "INSERT INTO rulebook_revision (revision, announced_at, effective_at, notice_seconds, policy_epoch) VALUES (?1, ?2, ?3, ?4, ?5)",
                 crlt::params![1_i64, 0_i64, 0_i64, 0_i64, 1_i64],
             ).await.unwrap();
         }
-        assert!(matches!(store.load("alpha", Selection::Latest).await, Err(Error::Storage)));
+        assert!(matches!(
+            store.load("alpha", Selection::Latest).await,
+            Err(Error::Storage)
+        ));
     }
-    let schema = SCHEMA.replace(" CHECK (entry_key = 'pin')", "").replace(" CHECK (revision > 0)", "");
+    let schema = SCHEMA
+        .replace(" CHECK (entry_key = 'pin')", "")
+        .replace(" CHECK (revision > 0)", "");
     let directory = tempfile::tempdir().unwrap();
-        let url = format!("file://{}", directory.path().join("import.db").display());
-        let db = crlt::Db::open(crlt::Config::new(url, "")).await.unwrap();
-    db.migrate(&[crlt::Migration::new(1, "import", &schema)]).await.unwrap();
+    let url = format!("file://{}", directory.path().join("import.db").display());
+    let db = crlt::Db::open(crlt::Config::new(url, "")).await.unwrap();
+    db.migrate(&[crlt::Migration::new(1, "import", &schema)])
+        .await
+        .unwrap();
     let store = LibsqlStore::new(db.clone());
-    store.append("alpha", None, change(book(), 0, 0)).await.unwrap();
+    store
+        .append("alpha", None, change(book(), 0, 0))
+        .await
+        .unwrap();
     let scope = db.community("alpha").unwrap();
-    scope.execute(
-        "INSERT INTO community_template (revision, entry_key, payload) VALUES (?1, ?2, ?3)",
-        crlt::params![1_i64, "foreign", r#"{"name":"standard","version":1}"#],
-    ).await.unwrap();
-    assert!(matches!(store.load("alpha", Selection::Latest).await, Err(Error::Corrupt)));
+    scope
+        .execute(
+            "INSERT INTO community_template (revision, entry_key, payload) VALUES (?1, ?2, ?3)",
+            crlt::params![1_i64, "foreign", r#"{"name":"standard","version":1}"#],
+        )
+        .await
+        .unwrap();
+    assert!(matches!(
+        store.load("alpha", Selection::Latest).await,
+        Err(Error::Corrupt)
+    ));
     db.community("zero").unwrap().execute(
         "INSERT INTO rulebook_revision (revision, announced_at, effective_at, notice_seconds, policy_epoch) VALUES (?1, ?2, ?3, ?4, ?5)",
         crlt::params![0_i64, 0_i64, 0_i64, 0_i64, 1_i64],
     ).await.unwrap();
-    assert!(matches!(store.load("zero", Selection::Latest).await, Err(Error::Corrupt)));
+    assert!(matches!(
+        store.load("zero", Selection::Latest).await,
+        Err(Error::Corrupt)
+    ));
 }
 
 #[tokio::test]
 async fn maximum_imported_revision_cannot_wrap_or_overwrite() {
     let (_dir, db, store) = local().await;
-    store.append("alpha", None, change(Rulebook::default(), 0, 0)).await.unwrap();
-    db.community("alpha").unwrap().execute(
-        "UPDATE rulebook_revision SET revision = ?1 WHERE revision = ?2",
-        crlt::params![i64::MAX, 1_i64],
-    ).await.unwrap();
+    store
+        .append("alpha", None, change(Rulebook::default(), 0, 0))
+        .await
+        .unwrap();
+    db.community("alpha")
+        .unwrap()
+        .execute(
+            "UPDATE rulebook_revision SET revision = ?1 WHERE revision = ?2",
+            crlt::params![i64::MAX, 1_i64],
+        )
+        .await
+        .unwrap();
     assert!(matches!(
-        store.append("alpha", Some(i64::MAX as u64), change(Rulebook::default(), 1, 1)).await,
+        store
+            .append(
+                "alpha",
+                Some(i64::MAX as u64),
+                change(Rulebook::default(), 1, 1)
+            )
+            .await,
         Err(Error::Invalid("revision overflow"))
     ));
-    assert_eq!(store.load("alpha", Selection::Latest).await.unwrap().unwrap().revision, i64::MAX as u64);
+    assert_eq!(
+        store
+            .load("alpha", Selection::Latest)
+            .await
+            .unwrap()
+            .unwrap()
+            .revision,
+        i64::MAX as u64
+    );
 }

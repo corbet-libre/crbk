@@ -267,7 +267,10 @@ fn identifiers_duplicate_definitions_and_numeric_bound_edges_fail_closed() {
     number.bounds.min = Some(0.into());
     number.bounds.max = Some("1e400".parse().unwrap());
     assert!(number.check(&json!(1.0)).is_err());
-    for (kind, value) in [(SettingType::String, json!("value")), (SettingType::Array, json!([1]))] {
+    for (kind, value) in [
+        (SettingType::String, json!("value")),
+        (SettingType::Array, json!([1])),
+    ] {
         let mut definition = setting(SettingKind::Technical, Layer::Member);
         definition.value_type = kind;
         definition.bounds = Bounds::default();

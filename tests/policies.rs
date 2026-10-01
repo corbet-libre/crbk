@@ -301,21 +301,49 @@ fn global_proof_bindings_and_slice_adapter_preserve_scope() {
         all_of: vec![requirement],
         ..Default::default()
     }));
-    snapshot.content.insert(gate_key(GateLevel::Global, "voucher"), json!(true));
-    snapshot.content.insert(provider_key(GateLevel::Global, "voucher", "local"), json!(true));
+    snapshot
+        .content
+        .insert(gate_key(GateLevel::Global, "voucher"), json!(true));
+    snapshot.content.insert(
+        provider_key(GateLevel::Global, "voucher", "local"),
+        json!(true),
+    );
     let mut proof = proof("voucher");
     proof.level = GateLevel::Global;
     proof.community = None;
     let proofs = [proof.clone()];
-    assert!(snapshot.may(subject(), "enter", proofs.as_slice(), 100).unwrap().allowed);
+    assert!(
+        snapshot
+            .may(subject(), "enter", proofs.as_slice(), 100)
+            .unwrap()
+            .allowed
+    );
     proof.community = Some("alpha".into());
-    assert!(!snapshot.may(subject(), "enter", &[proof.clone()][..], 100).unwrap().allowed);
+    assert!(
+        !snapshot
+            .may(subject(), "enter", &[proof.clone()][..], 100)
+            .unwrap()
+            .allowed
+    );
     proof.community = None;
     proof.provider = "other".into();
-    assert!(!snapshot.may(subject(), "enter", &[proof][..], 100).unwrap().allowed);
+    assert!(
+        !snapshot
+            .may(subject(), "enter", &[proof][..], 100)
+            .unwrap()
+            .allowed
+    );
     snapshot.issued = -1;
-    assert!(snapshot.may(subject(), "enter", proofs.as_slice(), 100).is_err());
+    assert!(
+        snapshot
+            .may(subject(), "enter", proofs.as_slice(), 100)
+            .is_err()
+    );
     snapshot.issued = 100;
     snapshot.community.clear();
-    assert!(snapshot.may(subject(), "enter", proofs.as_slice(), 100).is_err());
+    assert!(
+        snapshot
+            .may(subject(), "enter", proofs.as_slice(), 100)
+            .is_err()
+    );
 }

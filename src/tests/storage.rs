@@ -8,7 +8,10 @@ async fn poisoned_memory_store_refuses_reads_and_writes() {
         panic!("simulated storage owner panic");
     });
     assert!(result.is_err());
-    assert!(matches!(store.load("alpha", Selection::Latest).await, Err(Error::Storage)));
+    assert!(matches!(
+        store.load("alpha", Selection::Latest).await,
+        Err(Error::Storage)
+    ));
     let change = Change {
         rulebook: Rulebook::default(),
         announced_at: 0,
@@ -16,5 +19,8 @@ async fn poisoned_memory_store_refuses_reads_and_writes() {
         notice_seconds: 0,
         policy_epoch: 1,
     };
-    assert!(matches!(store.append("alpha", None, change).await, Err(Error::Storage)));
+    assert!(matches!(
+        store.append("alpha", None, change).await,
+        Err(Error::Storage)
+    ));
 }
