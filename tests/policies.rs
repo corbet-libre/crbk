@@ -6,7 +6,8 @@ use common::*;
 use crbk::*;
 use serde_json::json;
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn all_any_and_threshold_keep_missing_alternatives() {
     let policy = ActionPolicy {
         all_of: vec![requirement("voucher")],
@@ -48,7 +49,8 @@ fn all_any_and_threshold_keep_missing_alternatives() {
     assert!(!s.may(subject(), "unknown", &proofs, 100).unwrap().allowed);
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn combinations_count_distinct_gates_not_duplicate_proofs() {
     for k in 1..=3 {
         let policy = ActionPolicy {
@@ -78,7 +80,8 @@ fn combinations_count_distinct_gates_not_duplicate_proofs() {
     }
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn proof_subject_scope_provider_expiry_and_age_are_checked() {
     let policy = ActionPolicy {
         all_of: vec![requirement("voucher")],
@@ -138,7 +141,8 @@ fn proof_subject_scope_provider_expiry_and_age_are_checked() {
     assert!(s.may(subject(), "enter", &vec![original], -1).is_err());
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn absent_age_metadata_allowed_without_age_constraint_and_global_binding() {
     let mut requirement = requirement("phone");
     requirement.level = GateLevel::Global;
@@ -166,7 +170,8 @@ fn absent_age_metadata_allowed_without_age_constraint_and_global_binding() {
     assert!(!s.may(subject(), "enter", &vec![p], 100).unwrap().allowed);
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn disabled_gate_provider_action_and_platform_force_fail_closed() {
     let mut r = requirement("voucher");
     r.provider = Some("local".into());
@@ -203,7 +208,8 @@ fn disabled_gate_provider_action_and_platform_force_fail_closed() {
     );
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn policies_reject_invalid_thresholds_and_duplicate_provider_variants() {
     for k in [0, 3] {
         assert!(
@@ -238,7 +244,8 @@ fn policies_reject_invalid_thresholds_and_duplicate_provider_variants() {
     assert!(!format!("{error:?}").contains("secret-input"));
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn snapshots_and_verdicts_are_serializable_without_member_traces() {
     let b = decision_book(ActionPolicy {
         all_of: vec![requirement("voucher")],
@@ -263,7 +270,8 @@ fn snapshots_and_verdicts_are_serializable_without_member_traces() {
     assert!(!encoded.contains("proven_at"));
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn future_snapshots_and_empty_subjects_cannot_authorize() {
     let mut s = snapshot(decision_book(ActionPolicy::default()));
     assert!(

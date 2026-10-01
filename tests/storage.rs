@@ -1,3 +1,5 @@
+#![cfg(all(feature = "sql", not(target_arch = "wasm32")))]
+
 //! Shared backend contract and real libSQL transaction failure cases.
 
 mod common;

@@ -14,7 +14,8 @@ fn snapshot(book: &Rulebook) -> Snapshot {
     }
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn membership_defaults_and_platform_force_use_the_real_resolver() {
     let mut book = Rulebook::default();
     assert!(MembershipSettings::from_snapshot(&snapshot(&book)).is_err());

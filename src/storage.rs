@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Error, Result, Rulebook, Snapshot, Values};
 
+#[cfg(all(feature = "sql", not(target_arch = "wasm32")))]
 mod sql;
+#[cfg(all(feature = "sql", not(target_arch = "wasm32")))]
 pub use sql::{LibsqlStore, SCHEMA};
 
 /// Which immutable configuration revision to load.

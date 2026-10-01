@@ -119,6 +119,7 @@ pub fn snapshot(book: Rulebook) -> Snapshot {
     .unwrap()
 }
 
+#[cfg(all(feature = "sql", not(target_arch = "wasm32")))]
 pub async fn local() -> (tempfile::TempDir, crlt::Db, LibsqlStore) {
     let dir = tempfile::tempdir().unwrap();
     let config = crlt::Config::new(

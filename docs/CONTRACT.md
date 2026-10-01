@@ -168,3 +168,15 @@ days. All use normal platform/community resolution and force rules; member
 latitude is forbidden. Credential caps may be shortened and never exceed thirty
 days. `MembershipSettings::from_snapshot` rejects missing/null/invalid values.
 Consumers commit probation only at first admission and retain no admission date.
+
+## Portable policy evaluation
+
+The default `sql` feature preserves the native `LibsqlStore` integration through
+crlt. Device consumers use `default-features = false` to reuse the same
+`Snapshot::may` evaluator, sparse settings, membership rules and serialization
+without linking a database driver. SQL is unavailable on wasm32. The in-memory
+revision store and pure revision/snapshot types remain available.
+
+CI executes the same all/any/threshold, scope, provider, expiry, proof-age and
+settings vectors on native Rust and wasm32 with the wasm-bindgen Node runner.
+This adds no policy evaluator and changes no gate semantics.

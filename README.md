@@ -127,3 +127,21 @@ the repository or configured in CI. Never publish this crate to a registry.
 ## License
 
 Copyright 2026 Julian Y. Richard Corbet. Licensed under [LGPL-3.0-only](LICENSES/LGPL-3.0-only.txt) [WITH LGPL-3.0-linking-exception](LICENSES/LGPL-3.0-linking-exception.txt). See [LICENSE.md](LICENSE.md).
+
+## Continuous verification
+
+Dependency updates follow main and are tested against one CI-resolved lockfile.
+Line and branch coverage target 100%; failures remain blocking. See
+[the coverage contract](docs/COVERAGE.md) for measurement and exclusions.
+
+## Portable policy evaluation
+
+The default `sql` feature preserves the native `LibsqlStore` integration through
+crlt. Device consumers use `default-features = false` to reuse the same
+`Snapshot::may` evaluator, sparse settings, membership rules and serialization
+without linking a database driver. SQL is unavailable on wasm32. The in-memory
+revision store and pure revision/snapshot types remain available.
+
+CI executes the same all/any/threshold, scope, provider, expiry, proof-age and
+settings vectors on native Rust and wasm32 with the wasm-bindgen Node runner.
+This adds no policy evaluator and changes no gate semantics.

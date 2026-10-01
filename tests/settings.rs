@@ -6,7 +6,8 @@ use common::*;
 use crbk::*;
 use serde_json::{Value, json};
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn sparse_chain_and_force_exhaustively_preserve_null() {
     let choices = [None, Some(Value::Null), Some(json!(30))];
     for p in &choices {
@@ -47,7 +48,8 @@ fn sparse_chain_and_force_exhaustively_preserve_null() {
     }
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn pinned_templates_and_live_technical_values() {
     let mut b = book();
     b.set_platform("quota", platform(json!(20), false)).unwrap();
@@ -76,7 +78,8 @@ fn pinned_templates_and_live_technical_values() {
     );
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn every_layer_enforces_types_bounds_and_authority_even_when_shadowed() {
     let mut b = book();
     for bad in [
@@ -114,7 +117,8 @@ fn every_layer_enforces_types_bounds_and_authority_even_when_shadowed() {
     );
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn exact_large_integer_bounds_and_invalid_catalogue() {
     let mut b = Rulebook::default();
     let mut s = setting(SettingKind::Technical, Layer::Member);
@@ -139,7 +143,8 @@ fn exact_large_integer_bounds_and_invalid_catalogue() {
     assert!(b.define("bad_default", s).is_err());
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn whole_objects_replace_and_deserialization_cannot_bypass_validation() {
     let mut b = Rulebook::default();
     b.define(
@@ -166,7 +171,8 @@ fn whole_objects_replace_and_deserialization_cannot_bypass_validation() {
     assert!(!format!("{error:?} {error}").contains("private-input"));
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn control_settings_cannot_be_member_overridden() {
     let mut b = Rulebook::default();
     let s = Setting {
@@ -185,7 +191,8 @@ fn control_settings_cannot_be_member_overridden() {
     assert!(b.define("action/enter", s).is_err());
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn direct_checks_reject_malformed_bounds_even_for_nullable_values() {
     for (kind, min, max) in [
         (SettingType::Integer, "0.5", "100"),
@@ -206,7 +213,8 @@ fn direct_checks_reject_malformed_bounds_even_for_nullable_values() {
     }
 }
 
-#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn forced_numbers_reject_nonfinite_values_and_restore_deviations() {
     let mut s = setting(SettingKind::Technical, Layer::Member);
     s.value_type = SettingType::Number;
