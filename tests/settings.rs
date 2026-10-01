@@ -235,3 +235,59 @@ fn forced_numbers_reject_nonfinite_values_and_restore_deviations() {
         .unwrap();
     assert_eq!(b.resolve(&Values::new()).unwrap()["number"], json!(25));
 }
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn identifiers_duplicate_definitions_and_numeric_bound_edges_fail_closed() {
+    let base = setting(SettingKind::Technical, Layer::Member);
+    for key in [String::new(), "x".repeat(201), "has space".into()] {
+        assert!(Rulebook::default().define(key, base.clone()).is_err());
+    }
+    let mut book = book();
+    assert!(book.define("quota", base.clone()).is_err());
+    book.pin_template(None).unwrap();
+    assert!(book.publish_template(pin(0), Values::new()).is_err());
+    let mut number = base;
+    number.value_type = SettingType::Number;
+    number.bounds = Bounds {
+        min: Some(1.into()),
+        max: Some(2.into()),
+    };
+    assert!(number.check(&json!(1.0)).is_ok());
+    assert!(number.check(&json!(2.0)).is_ok());
+    assert!(number.check(&json!(0.5)).is_err());
+    assert!(number.check(&json!(2.5)).is_err());
+    number.bounds.min = None;
+    assert!(number.check(&json!(-10.5)).is_ok());
+    number.bounds.max = None;
+    assert!(number.check(&json!(10.5)).is_ok());
+    number.bounds.min = Some(2.into());
+    number.bounds.max = Some(1.into());
+    assert!(number.check(&json!(1.5)).is_err());
+    number.bounds.min = Some(0.into());
+    number.bounds.max = Some("1e400".parse().unwrap());
+    assert!(number.check(&json!(1.0)).is_err());
+    for (kind, value) in [(SettingType::String, json!("value")), (SettingType::Array, json!([1]))] {
+        let mut definition = setting(SettingKind::Technical, Layer::Member);
+        definition.value_type = kind;
+        definition.bounds = Bounds::default();
+        assert!(definition.check(&value).is_ok());
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn deserialized_template_versions_and_pins_are_validated() {
+    let mut book = book();
+    book.publish_template(pin(1), Values::new()).unwrap();
+    let encoded = serde_json::to_value(&book).unwrap();
+    let mut zero = encoded.clone();
+    let template = zero["templates"]["standard"]["1"].take();
+    zero["templates"]["standard"] = json!({"0": template});
+    let invalid: Rulebook = serde_json::from_value(zero).unwrap();
+    assert!(invalid.validate().is_err());
+    let mut missing = encoded;
+    missing["pin"] = serde_json::to_value(pin(2)).unwrap();
+    let invalid: Rulebook = serde_json::from_value(missing).unwrap();
+    assert!(invalid.resolve(&Values::new()).is_err());
+}

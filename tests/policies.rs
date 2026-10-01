@@ -290,3 +290,32 @@ fn future_snapshots_and_empty_subjects_cannot_authorize() {
     assert!(s.may(subject(), "enter", &vec![], 100).is_err());
     assert!(s.may(subject(), "enter", &vec![], 101).unwrap().allowed);
 }
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn global_proof_bindings_and_slice_adapter_preserve_scope() {
+    let mut requirement = requirement("voucher");
+    requirement.level = GateLevel::Global;
+    requirement.provider = Some("local".into());
+    let mut snapshot = snapshot(decision_book(ActionPolicy {
+        all_of: vec![requirement],
+        ..Default::default()
+    }));
+    snapshot.content.insert(gate_key(GateLevel::Global, "voucher"), json!(true));
+    snapshot.content.insert(provider_key(GateLevel::Global, "voucher", "local"), json!(true));
+    let mut proof = proof("voucher");
+    proof.level = GateLevel::Global;
+    proof.community = None;
+    let proofs = [proof.clone()];
+    assert!(snapshot.may(subject(), "enter", proofs.as_slice(), 100).unwrap().allowed);
+    proof.community = Some("alpha".into());
+    assert!(!snapshot.may(subject(), "enter", &[proof.clone()][..], 100).unwrap().allowed);
+    proof.community = None;
+    proof.provider = "other".into();
+    assert!(!snapshot.may(subject(), "enter", &[proof][..], 100).unwrap().allowed);
+    snapshot.issued = -1;
+    assert!(snapshot.may(subject(), "enter", proofs.as_slice(), 100).is_err());
+    snapshot.issued = 100;
+    snapshot.community.clear();
+    assert!(snapshot.may(subject(), "enter", proofs.as_slice(), 100).is_err());
+}

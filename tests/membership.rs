@@ -56,3 +56,24 @@ fn membership_defaults_and_platform_force_use_the_real_resolver() {
     invalid.content.insert(PROBATION_DAYS.into(), json!(null));
     assert!(MembershipSettings::from_snapshot(&invalid).is_err());
 }
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn existing_membership_catalogue_and_untrusted_snapshot_bounds() {
+    let mut book = Rulebook::default();
+    define_membership_settings(&mut book).unwrap();
+    let original = book.clone();
+    define_membership_settings(&mut book).unwrap();
+    assert_eq!(book, original);
+    for (key, values) in [
+        (NEW_CREDENTIAL_DAYS, vec![json!(0), json!(31), json!(-1)]),
+        (ESTABLISHED_CREDENTIAL_DAYS, vec![json!(0), json!(31)]),
+        (PROBATION_DAYS, vec![json!(0), json!(u64::MAX)]),
+    ] {
+        for value in values {
+            let mut untrusted = snapshot(&book);
+            untrusted.content.insert(key.into(), value);
+            assert!(MembershipSettings::from_snapshot(&untrusted).is_err());
+        }
+    }
+}

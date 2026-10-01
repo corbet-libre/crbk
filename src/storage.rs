@@ -170,3 +170,7 @@ fn prepare(previous: Option<&Revision>, expected: Option<u64>, change: Change) -
         .ok_or(Error::Invalid("revision overflow"))?;
     Ok(Revision { revision, change })
 }
+
+#[cfg(all(test, feature = "sql", not(target_arch = "wasm32")))]
+#[path = "tests/storage.rs"]
+mod tests;
