@@ -79,7 +79,7 @@ jobs:
       env:
         CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
       run: cargo test --locked --no-default-features --target wasm32-unknown-unknown --test policies --test settings
-        --test membership
+        --test membership --test group_defaults
     needs:
     - resolve
   dependency-policy:

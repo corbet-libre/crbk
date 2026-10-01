@@ -1,11 +1,13 @@
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
+mod groups;
 mod membership;
 mod policy;
 mod settings;
 mod storage;
 
+pub use groups::*;
 pub use membership::*;
 pub use policy::*;
 pub use settings::*;

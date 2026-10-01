@@ -56,6 +56,8 @@ database per community. Every application table also carries `community_id`;
 crlt injects the namespace and enforces indexed plans for every query.
 
 ```rust,no_run
+# #[cfg(all(feature = "sql", not(target_arch = "wasm32")))]
+# mod sql_example {
 use crbk::{Change, LibsqlStore, Rulebook, Selection, Storage, SCHEMA};
 use crlt::{Config, Db, Migration};
 
@@ -72,6 +74,7 @@ let active = store.load("example", Selection::At(160)).await?.unwrap();
 let unsigned = active.snapshot("example", 160)?;
 # let _ = unsigned;
 # Ok(())
+# }
 # }
 ```
 
