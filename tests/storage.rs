@@ -464,3 +464,65 @@ async fn maximum_imported_revision_cannot_wrap_or_overwrite() {
         i64::MAX as u64
     );
 }
+
+#[tokio::test]
+async fn valid_redefinitions_and_nonprospective_dates_preserve_lineage() {
+    let store = MemoryStore::default();
+    let original = book();
+    store.append("alpha", None, change(original.clone(), 10, 20)).await.unwrap();
+    assert!(matches!(
+        store.append("alpha", Some(1), change(original.clone(), 10, 20)).await,
+        Err(Error::Invalid("nonprospective change"))
+    ));
+    let mut encoded = serde_json::to_value(&original).unwrap();
+    encoded["catalog"]["quota"]["default"] = json!(20);
+    let different: Rulebook = serde_json::from_value(encoded).unwrap();
+    different.validate().unwrap();
+    assert!(matches!(
+        store.append("alpha", Some(1), change(different, 21, 21)).await,
+        Err(Error::Invalid("catalogue definition is immutable"))
+    ));
+    assert_eq!(store.load("alpha", Selection::Latest).await.unwrap().unwrap().change.rulebook, original);
+}
+
+#[tokio::test]
+async fn a_real_leased_connection_times_out_reads_and_appends() {
+    let directory = tempfile::tempdir().unwrap();
+    let url = format!("file://{}", directory.path().join("held.db").display());
+    let mut config = crlt::Config::new(url, "");
+    config.timeout = std::time::Duration::from_secs(1);
+    config.busy_timeout = std::time::Duration::ZERO;
+    let db = crlt::Db::open(config).await.unwrap();
+    db.migrate(&[crlt::Migration::new(1, "rules", SCHEMA)]).await.unwrap();
+    let held = db.community("alpha").unwrap().tx().await.unwrap();
+    let store = LibsqlStore::new(db);
+    assert!(matches!(store.load("alpha", Selection::Latest).await, Err(Error::Storage)));
+    assert!(matches!(store.append("alpha", None, change(book(), 0, 0)).await, Err(Error::Storage)));
+    drop(held);
+    assert!(store.load("alpha", Selection::Latest).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn duplicate_pin_rows_in_an_incompatible_import_are_rejected() {
+    let directory = tempfile::tempdir().unwrap();
+    let url = format!("file://{}", directory.path().join("duplicate.db").display());
+    let db = crlt::Db::open(crlt::Config::new(url, "")).await.unwrap();
+    let before = SCHEMA.split("CREATE TABLE community_template (").nth(1).unwrap();
+    let table = before.split("CREATE TABLE community_value (").next().unwrap();
+    let replacement = table.replace(
+        "PRIMARY KEY (community_id, revision, entry_key)",
+        "slot INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (community_id, revision, entry_key, slot)",
+    );
+    let schema = SCHEMA.replace(table, &replacement);
+    db.migrate(&[crlt::Migration::new(1, "import", &schema)]).await.unwrap();
+    let mut original = book();
+    original.publish_template(pin(1), Values::new()).unwrap();
+    original.pin_template(Some(pin(1))).unwrap();
+    let store = LibsqlStore::new(db.clone());
+    store.append("alpha", None, change(original, 0, 0)).await.unwrap();
+    db.community("alpha").unwrap().execute(
+        "INSERT INTO community_template (revision, entry_key, payload, slot) VALUES (?1, ?2, ?3, ?4)",
+        crlt::params![1_i64, "pin", r#"{"name":"standard","version":1}"#, 1_i64],
+    ).await.unwrap();
+    assert!(matches!(store.load("alpha", Selection::Latest).await, Err(Error::Corrupt)));
+}

@@ -1,4 +1,4 @@
-use crlt::{Community, Db, Transaction, params};
+use crlt::{Community, Db, IntoParams, Transaction, params};
 
 use super::{Change, Revision, Selection, Storage, community_key, prepare, validate_selection};
 use crate::{Error, Result, Rulebook};
@@ -41,30 +41,24 @@ impl LibsqlStore {
     /// before executing it, including inserts and transaction reads.
     pub async fn check_query_plans(&self, community: &str) -> Result<()> {
         let scope = self.scope(community)?;
-        scope
-            .explain(LATEST, ())
-            .await
-            .map_err(|_| Error::Storage)?
-            .assert_indexed()
-            .map_err(|_| Error::Storage)?;
+        check_plan(&scope, LATEST, ()).await?;
         for query in [AT, EXACT] {
-            scope
-                .explain(query, [1_i64])
-                .await
-                .map_err(|_| Error::Storage)?
-                .assert_indexed()
-                .map_err(|_| Error::Storage)?;
+            check_plan(&scope, query, [1_i64]).await?;
         }
         for table in TABLES {
-            scope
-                .explain(&read_sql(table), [1_i64])
-                .await
-                .map_err(|_| Error::Storage)?
-                .assert_indexed()
-                .map_err(|_| Error::Storage)?;
+            check_plan(&scope, &read_sql(table), [1_i64]).await?;
         }
         Ok(())
     }
+}
+
+async fn check_plan(scope: &Community, query: &str, params: impl IntoParams) -> Result<()> {
+    scope
+        .explain(query, params)
+        .await
+        .map_err(|_| Error::Storage)?
+        .assert_indexed()
+        .map_err(|_| Error::Storage)
 }
 
 impl Storage for LibsqlStore {

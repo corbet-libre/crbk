@@ -347,3 +347,16 @@ fn global_proof_bindings_and_slice_adapter_preserve_scope() {
             .is_err()
     );
 }
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn malformed_unrestricted_provider_cannot_satisfy_an_enabled_gate() {
+    let snapshot = snapshot(decision_book(ActionPolicy {
+        all_of: vec![requirement("voucher")],
+        ..Default::default()
+    }));
+    let mut proof = proof("voucher");
+    proof.provider = "invalid provider".into();
+    let decision = snapshot.may(subject(), "enter", &[proof][..], 100).unwrap();
+    assert!(!decision.allowed);
+}
