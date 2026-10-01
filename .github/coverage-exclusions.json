@@ -1,0 +1,13 @@
+[
+  {
+    "file": "src/settings.rs",
+    "line": 352,
+    "source": ".transpose()?;",
+    "target": "native",
+    "reason": "Rulebook::resolve first calls validate(), which resolves every present template pin through the same immutable self. No await or mutation occurs before the second lookup, so the repeated transpose error propagation cannot execute.",
+    "evidence": "docs/COVERAGE.md#validated-template-pin; tests/settings.rs deserialized_template_versions_and_pins_are_validated covers unknown pins failing in the first validation and real pinned resolution; all 184 emitted branch arms remain required.",
+    "evidence_sources": {
+      "src/settings.rs": "68a6bd6b95182c7a3a282b3dded2a7e77dbe8371f2d623f08d6db25d5182b37e"
+    }
+  }
+]
