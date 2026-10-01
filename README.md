@@ -104,19 +104,17 @@ was available: `GateResults` and `Subject`/`MembershipState` are the documented
 local boundary until those facades expose shared types. `csgn` consumes serialized
 snapshots; signing is intentionally not a dependency of this crate.
 
-The previous crlt pin, `9c076b1`, is an ancestor of this revision. The only
-intervening change corrects an upstream query-plan test; the API and dependency
-graph are unchanged. The manifest and lockfile use the same full revision so
-consumers pinned to it can share one `crlt::Db` type and connection pool. Other
-cvld leaves are not dependencies of this crate and need no additional pins here.
+The crlt manifest follows main. CI resolves one shared lock snapshot and checks
+that each first-party crate appears at exactly one source revision, so consumers
+share one `crlt::Db` type and connection pool. Other cvld leaves are not direct
+dependencies of this crate.
 
 ## Validation
 
 GitHub Actions runs stable Rust formatting, strict Clippy and tests, retaining
-the dependency lock as an artifact. A metadata check rejects floating Corbet Git
-dependencies and duplicate Corbet packages, including transitive leaves. Current
-upstream heads are checked when updating pins; CI validates the locked graph
-without following moving branches. Do not run Cargo on the workstation. Tests
+the dependency lock as an artifact. A metadata check requires first-party main
+declarations and rejects duplicate packages, including transitive leaves. The
+resolver refreshes the lock once; every substantive check uses that exact snapshot. Do not run Cargo on the workstation. Tests
 cover the full sparse read chain, nulls, force, exact integer bounds, template
 pinning, member authority, gate decisions, prospective revisions, stale writers,
 namespace isolation, database reopen, query plans, corruption and transaction
