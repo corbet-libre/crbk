@@ -5,6 +5,7 @@ mod forum;
 mod groups;
 mod membership;
 mod policy;
+mod records;
 mod settings;
 mod storage;
 
@@ -12,6 +13,7 @@ pub use forum::*;
 pub use groups::*;
 pub use membership::*;
 pub use policy::*;
+pub use records::*;
 pub use settings::*;
 pub use storage::*;
 

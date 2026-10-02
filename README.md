@@ -161,3 +161,5 @@ revision store and pure revision/snapshot types remain available.
 CI executes the same all/any/threshold, scope, provider, expiry, proof-age and
 settings vectors on native Rust and wasm32 with the wasm-bindgen Node runner.
 This adds no policy evaluator and changes no gate semantics.
+
+`define_record_settings` materializes `records.epoch_seconds` in the original signed settings catalogue (decided default: 86400 seconds). `RecordSettings::from_snapshot` requires that resolved value and rejects missing/malformed values. Community/platform authority applies; members cannot override it. This interval is neither a frontier proof nor permission to use a stale epoch. The frontier owner supplies the signed common schedule and enforces its own checked clock bounds.
