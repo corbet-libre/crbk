@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.88"
 description = "Rulebook: sparse layered settings and the decisions on them"
 license = "LGPL-3.0-only WITH LGPL-3.0-linking-exception"
-repository = "https://github.com/corbet-foss/crbk"
+repository = "https://git.corbet.ch/corbet-foss/crbk.git"
 readme = "README.md"
 publish = false
 include = ["Cargo.toml", "src/**", "README.md", "LICENSE", "LICENSE.md", "LICENSES/LGPL-3.0-only.txt", "LICENSES/LGPL-3.0-linking-exception.txt", "LICENSES/GPL-3.0-only.txt"]
@@ -15,9 +15,10 @@ default = ["sql"]
 sql = ["dep:crlt"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-crlt = { git = "https://github.com/corbet-foss/crlt", branch = "main", optional = true }
+crlt = { git = "https://git.corbet.ch/corbet-foss/crlt.git", branch = "v01", optional = true }
 
 [dependencies]
+semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["arbitrary_precision"] }
 thiserror = "2"

@@ -86,6 +86,21 @@ login tracking, raw gate data, environment-reading production code or signing ke
 
 ## Dependency survey
 
+The optional `define_forum_settings` catalogue has **no usable defaults**.
+`forum.heartbeat_ms`, `forum.lease_ms`, `forum.minimum_client_version`, and
+`forum.room_passes_per_epoch` must be explicitly configured by the platform or
+community. `ForumSettings::from_snapshot` projects the original authenticated
+settings snapshot, rejects null/missing values, requires positive exact wire
+integers (at most 2^53−1), and requires heartbeat shorter than lease. The quota
+is total per member/common epoch, independent of rooms. Forum still clamps
+leases to its storage TTL and current credential/authority deadline; this
+projection neither authenticates snapshots nor performs issuance.
+
+The maintained MIT/Apache-2.0 [semver](https://docs.rs/semver/latest/semver/struct.Version.html)
+crate was selected on 2026-10-02 for parsing and minimum-version precedence.
+`ForumSettings::accepts_client` ignores build metadata and compares prereleases
+according to SemVer. No local version parser or string-order comparison exists.
+
 Surveyed crates.io documentation and upstream GitHub sources on 2026-09-30:
 
 | Candidate | Decision and reason |
