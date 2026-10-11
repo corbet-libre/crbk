@@ -180,3 +180,23 @@ revision store and pure revision/snapshot types remain available.
 CI executes the same all/any/threshold, scope, provider, expiry, proof-age and
 settings vectors on native Rust and wasm32 with the wasm-bindgen Node runner.
 This adds no policy evaluator and changes no gate semantics.
+
+## Configured record publication period
+
+`RecordEpochSettings` uses an explicit application-chosen catalogue key. It does
+not choose a fixed setting name, usable duration, enrollment-checkpoint cadence
+or member-descriptor fallback. `define` installs the ordinary technical integer
+definition with null meaning unconfigured; an existing definition must match
+exactly. `validate_catalogue` checks immutable schema/default/override controls
+before the publisher resolves its common snapshot. Member and template overrides
+refuse through the existing Rulebook resolver; platform force and explicit null
+retain their original meaning.
+
+`from_snapshot` reads only that configured key and requires a positive exact
+integer at most 2^53-1. It authenticates nothing. Consumers obtain the original
+current snapshot through Policy/Charter, and the host producer supplies this same
+explicit period to AccountService's original record publication port. Flat
+snapshots do not carry catalogue definitions. The host owns configuration
+serialization, signed publication and period-transition refusal. Real resolver
+and SQLite reopen/revision scenarios are authored; no execution or end-to-end G2
+qualification is claimed by this source change.

@@ -19,6 +19,10 @@ interfaces may change. [Implemented contract](docs/CONTRACT.md).
   `Latest` includes scheduled changes for editing.
 - `Revision::snapshot`: serializable flat community content for signing by `csgn`.
   No member overrides, identities or gate results enter storage or snapshots.
+- `RecordEpochSettings`: an application-selected catalogue key and exact positive
+  period projection. No name or usable duration is defaulted. Publishers check
+  immutable definition controls; consumers authenticate snapshots through their
+  original Policy/Charter before using the value. This grants no proof authority.
 
 ```rust
 use crbk::{Bounds, Layer, Rulebook, Setting, SettingKind, SettingType, Values};
