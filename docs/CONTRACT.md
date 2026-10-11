@@ -200,3 +200,21 @@ snapshots do not carry catalogue definitions. The host owns configuration
 serialization, signed publication and period-transition refusal. Real resolver
 and SQLite reopen/revision scenarios are authored; no execution or end-to-end G2
 qualification is claimed by this source change.
+
+## Configured outcome-token quota
+
+`OutcomeQuotaSettings` projects one application-chosen technical catalogue key
+through the same Rulebook resolver. The original blind issuer supports a common
+per-member epoch allowance of 1..1024; this is a rate limit, not a proof of
+resolved-contact count. No usable default or fixed key name is supplied. Null
+means unconfigured and refuses a required settlement capability. Definitions
+are immutable and must match the exact integer bounds, null default and
+Community override ceiling; member/template values cannot replace the common
+quota. Platform force retains its original semantics.
+
+The Policy publisher validates this catalogue on the same actual active
+Rulebook used for its effective settings and epoch. Snapshot parsing verifies
+no signature or currentness. A configured daily host must hold/recheck the
+original Policy cut, preserve already-issued token budgets and use the native
+owner's explicit quota-transition refusal rather than refill/rekey within a
+day. These owner projection tests are authored, not executed by this change.

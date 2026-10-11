@@ -7,6 +7,7 @@ mod membership;
 mod policy;
 mod record;
 mod settings;
+mod settlement;
 mod storage;
 
 pub use forum::*;
@@ -15,6 +16,7 @@ pub use membership::*;
 pub use policy::*;
 pub use record::*;
 pub use settings::*;
+pub use settlement::*;
 pub use storage::*;
 
 /// Failures contain no supplied values, subjects, proofs or database details.
