@@ -66,14 +66,13 @@ async fn check_plan(scope: &Community, query: &str, params: impl IntoParams) -> 
 impl Storage for LibsqlStore {
     async fn load(&self, community: &str, selection: Selection) -> Result<Option<Revision>> {
         validate_selection(selection)?;
-        let mut tx = self
-            .scope(community)?
-            .tx()
-            .await
-            .map_err(|_| Error::Storage)?;
-        let result = read(&mut tx, selection).await?;
-        tx.commit().await.map_err(|_| Error::Storage)?;
-        Ok(result)
+        // The selected header and every child row are published atomically.
+        // Owners only append revisions; after selecting one committed revision,
+        // its children cannot change while subsequent revisions are appended.
+        // Reads therefore need no second writer when called inside another
+        // owner's final authority transaction on this same database.
+        let scope = self.scope(community)?;
+        read(&mut Reader::Committed(&scope), selection).await
     }
 
     async fn append(
@@ -115,7 +114,7 @@ impl LibsqlStore {
             .tx()
             .await
             .map_err(|_| Error::Storage)?;
-        let previous = read(&mut tx, Selection::Latest).await?;
+        let previous = read(&mut Reader::Writer(&mut tx), Selection::Latest).await?;
         let next = prepare(previous.as_ref(), expected, change)?;
         tx.execute("INSERT INTO rulebook_revision (revision, announced_at, effective_at, notice_seconds, policy_epoch) VALUES (?1, ?2, ?3, ?4, ?5)",
             params![next.revision as i64, next.change.announced_at, next.change.effective_at, next.change.notice_seconds as i64, next.change.policy_epoch as i64])
@@ -133,7 +132,21 @@ fn read_sql(table: &str) -> String {
     format!("SELECT entry_key, payload FROM {table} WHERE revision = ?1")
 }
 
-async fn read(tx: &mut Transaction, selection: Selection) -> Result<Option<Revision>> {
+enum Reader<'a> {
+    Committed(&'a Community),
+    Writer(&'a mut Transaction),
+}
+
+impl Reader<'_> {
+    async fn query(&mut self, sql: &str, params: impl IntoParams) -> crlt::Result<Vec<crlt::Row>> {
+        match self {
+            Self::Committed(scope) => scope.query(sql, params).await,
+            Self::Writer(tx) => tx.query(sql, params).await,
+        }
+    }
+}
+
+async fn read(tx: &mut Reader<'_>, selection: Selection) -> Result<Option<Revision>> {
     let rows = match selection {
         Selection::Latest => tx.query(LATEST, ()).await,
         Selection::At(time) => tx.query(AT, [time]).await,
