@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Error, Result, Rulebook, Snapshot, Values};
 
+mod guard;
+pub use guard::CommitGuard;
+
 #[cfg(all(feature = "sql", not(target_arch = "wasm32")))]
 mod sql;
 #[cfg(all(feature = "sql", not(target_arch = "wasm32")))]
@@ -80,6 +83,18 @@ pub trait Storage: Send + Sync {
         expected: Option<u64>,
         change: Change,
     ) -> impl Future<Output = Result<Revision>> + Send;
+    /// Stage this same append under its writer, then check the real owner before
+    /// commit. Unsupported backends refuse rather than falling back to append.
+    fn append_checked<G: CommitGuard>(
+        &self,
+        community: &str,
+        expected: Option<u64>,
+        change: Change,
+        guard: &mut G,
+    ) -> impl Future<Output = Result<Revision>> + Send {
+        let _ = (community, expected, change, guard);
+        async { Err(Error::Storage) }
+    }
 }
 
 /// Functional in-memory backend using the same validation as libSQL.

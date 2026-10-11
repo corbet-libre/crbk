@@ -1,6 +1,8 @@
 use crlt::{Community, Db, IntoParams, Transaction, params};
 
-use super::{Change, Revision, Selection, Storage, community_key, prepare, validate_selection};
+use super::{
+    Change, CommitGuard, Revision, Selection, Storage, community_key, prepare, validate_selection,
+};
 use crate::{Error, Result, Rulebook};
 
 /// Trusted DDL for the service's crlt migration list. Version numbering belongs
@@ -80,6 +82,34 @@ impl Storage for LibsqlStore {
         expected: Option<u64>,
         change: Change,
     ) -> Result<Revision> {
+        self.append_with_guard(
+            community,
+            expected,
+            change,
+            &mut super::guard::CallerAuthorized,
+        )
+        .await
+    }
+    async fn append_checked<G: CommitGuard>(
+        &self,
+        community: &str,
+        expected: Option<u64>,
+        change: Change,
+        guard: &mut G,
+    ) -> Result<Revision> {
+        self.append_with_guard(community, expected, change, guard)
+            .await
+    }
+}
+
+impl LibsqlStore {
+    async fn append_with_guard<G: CommitGuard>(
+        &self,
+        community: &str,
+        expected: Option<u64>,
+        change: Change,
+        guard: &mut G,
+    ) -> Result<Revision> {
         let mut tx = self
             .scope(community)?
             .tx()
@@ -91,7 +121,10 @@ impl Storage for LibsqlStore {
             params![next.revision as i64, next.change.announced_at, next.change.effective_at, next.change.notice_seconds as i64, next.change.policy_epoch as i64])
             .await.map_err(|_| Error::Storage)?;
         write(&mut tx, &next).await?;
+        guard.check().await?;
+        guard.release()?;
         tx.commit().await.map_err(|_| Error::Storage)?;
+        guard.release().map_err(|_| Error::Storage)?;
         Ok(next)
     }
 }
