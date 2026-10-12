@@ -9,6 +9,7 @@ mod record;
 mod settings;
 mod settlement;
 mod storage;
+mod waves;
 
 pub use forum::*;
 pub use groups::*;
@@ -18,6 +19,7 @@ pub use record::*;
 pub use settings::*;
 pub use settlement::*;
 pub use storage::*;
+pub use waves::*;
 
 /// Failures contain no supplied values, subjects, proofs or database details.
 #[derive(Debug, thiserror::Error)]
