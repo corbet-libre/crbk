@@ -1,4 +1,3 @@
-
 //! Shared backend contract and real libSQL transaction failure cases.
 #![cfg(all(feature = "sql", not(target_arch = "wasm32")))]
 
