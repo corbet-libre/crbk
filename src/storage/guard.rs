@@ -16,7 +16,9 @@ pub trait CommitGuard: Send {
 
 // Preserve the original caller-authorized append API. Checked operations never
 // select this private adapter or fall back to it on refusal.
+#[cfg(feature = "sql")]
 pub(super) struct CallerAuthorized;
+#[cfg(feature = "sql")]
 impl CommitGuard for CallerAuthorized {
     async fn check(&mut self) -> Result<()> {
         Ok(())
