@@ -73,7 +73,7 @@ rustup run nightly cargo llvm-cov --version
 # Re-prepend the verified ccid directory inside the shell so `ccid` on PATH stays exact.
 export ARTIFACT_ROOT="${ARTIFACT_ROOT:-$state/release-artifacts}"
 mkdir -p "$ARTIFACT_ROOT"
-if [ "$CHECKS" = "resolve-dependencies" ]; then
-  exec "$CCID_BIN" check --repo "$PWD" --check resolve-dependencies
+nix-shell .ci/check-shell.nix --run 'export PATH="$(dirname "$CCID_BIN"):$PATH"; set -e; if [ "$CHECKS" = "resolve-dependencies" ]; then
+  exec "$CCID_BIN" check --repo "$PWD" --check "$CHECKS"
 fi
-nix-shell .ci/check-shell.nix --run 'export PATH="$(dirname "$CCID_BIN"):$PATH"; set -e; "$CCID_BIN" cached --repo "$PWD" --check verify; test -s ".ccid/results/verify.jsonl"; exec "$CCID_BIN" check --repo "$PWD" --check advisories'
+"$CCID_BIN" cached --repo "$PWD" --check verify; test -s ".ccid/results/verify.jsonl"; exec "$CCID_BIN" check --repo "$PWD" --check advisories'
