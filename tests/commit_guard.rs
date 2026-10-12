@@ -1,5 +1,5 @@
-#![cfg(all(feature = "sql", not(target_arch = "wasm32")))]
 //! Persistence mechanics only; real member authorization is tested by the host.
+#![cfg(all(feature = "sql", not(target_arch = "wasm32")))]
 mod common;
 use common::*;
 use crbk::*;

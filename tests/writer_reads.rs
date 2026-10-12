@@ -1,5 +1,5 @@
-#![cfg(all(feature = "sql", not(target_arch = "wasm32")))]
 //! Real committed revision reads while another owner retains the same DB writer.
+#![cfg(all(feature = "sql", not(target_arch = "wasm32")))]
 mod common;
 use common::*;
 use crbk::*;
