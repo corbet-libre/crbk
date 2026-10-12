@@ -9,6 +9,7 @@ const MAX_OUTCOME_PASSES: u16 = 1024;
 /// This is a rate limit, not evidence that a contact has resolved.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OutcomeQuotaSettings {
+    /// Outcome passes granted to each member per epoch.
     pub quota: u16,
 }
 
