@@ -71,6 +71,8 @@ rustup run nightly cargo llvm-cov --version
 # libsql-ffi runs bindgen at build time; execute BOTH checks inside the pinned
 # shell (NAR-pinned revision in check-shell.nix).
 # Re-prepend the verified ccid directory inside the shell so `ccid` on PATH stays exact.
+export ARTIFACT_ROOT="${ARTIFACT_ROOT:-$state/release-artifacts}"
+mkdir -p "$ARTIFACT_ROOT"
 if [ "$CHECKS" = "resolve-dependencies" ]; then
   exec "$CCID_BIN" check --repo "$PWD" --check resolve-dependencies
 fi
