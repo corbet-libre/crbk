@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
+mod catalog;
 mod forum;
 mod groups;
 mod membership;
@@ -11,6 +12,7 @@ mod settlement;
 mod storage;
 mod waves;
 
+pub use catalog::*;
 pub use forum::*;
 pub use groups::*;
 pub use membership::*;
