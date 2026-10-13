@@ -177,3 +177,31 @@ fn the_standing_and_voucher_defaults_are_the_reference_community() {
             .is_err()
     );
 }
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn the_rulebook_yields_the_parameters_and_a_changed_value_changes_them() {
+    let mut book = book();
+    let params = book.standing_params().unwrap();
+    assert_eq!(params.c0, 3);
+    assert_eq!(params.voucher.slope_q, [6_554, 131_072, 1_638_400]);
+    assert_eq!(params.voucher.reward_cap, 2);
+    // A community value, a platform value and the reward switch all reach the table.
+    book.set_community("standing.c0", Some(json!(4))).unwrap();
+    book.set_platform(
+        "voucher.slope.member",
+        Some(PlatformValue {
+            value: json!(0.2),
+            force: false,
+        }),
+    )
+    .unwrap();
+    book.set_community("voucher.reward.enabled", Some(json!(false)))
+        .unwrap();
+    let changed = book.standing_params().unwrap();
+    assert_eq!(changed.c0, 4);
+    assert_eq!(changed.voucher.slope_q[0], 13_107);
+    assert_eq!(changed.voucher.reward_cap, 0);
+    // A rulebook that lacks the catalogue yields no parameters.
+    assert!(Rulebook::default().standing_params().is_err());
+}
