@@ -172,5 +172,8 @@ fn the_standing_and_voucher_defaults_are_the_reference_community() {
     }
     // Root alone sets the brake threshold.
     let mut book = book();
-    assert!(book.set_community("voucher.brake_cap", Some(json!(2))).is_err());
+    assert!(
+        book.set_community("voucher.brake_cap", Some(json!(2)))
+            .is_err()
+    );
 }
