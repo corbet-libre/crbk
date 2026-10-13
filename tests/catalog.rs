@@ -15,7 +15,7 @@ fn every_entry_defines_and_defaults_resolve() {
     let book = book();
     book.validate().unwrap();
     let all = platform_catalog();
-    assert!(all.len() == 47);
+    assert!(all.len() == 48);
     let resolved = book.resolve(&Default::default()).unwrap();
     for entry in &all {
         assert_eq!(resolved[&entry.key], entry.setting.default, "{}", entry.key);
@@ -125,4 +125,83 @@ fn role_bounds_are_consistent() {
         let max = book[&format!("voucher.max.{role}")].as_i64().unwrap();
         assert!(min <= max, "{role}");
     }
+}
+
+/// The thirty-two keys `czkp::standing::Params::from_rulebook` reads, with the
+/// catalogue values that make the reference community. czkp has no defaults; cvld
+/// pins the digest of exactly these numbers against the circuit.
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn the_standing_and_voucher_defaults_are_the_reference_community() {
+    let resolved = book().resolve(&Default::default()).unwrap();
+    for (key, expected) in [
+        ("standing.c0", json!(3)),
+        ("standing.h_a", json!(14)),
+        ("standing.h_g", json!(14)),
+        ("standing.n_half", json!(25)),
+        ("standing.n_c", json!(60)),
+        ("standing.e_q", json!(16_384)),
+        ("standing.r_max", json!(40)),
+        ("standing.r_age", json!(2)),
+        ("standing.c_max_q", json!(52_428)),
+        ("standing.c_vet", json!(30)),
+        ("standing.age_vet", json!(60)),
+        ("standing.boost_q", json!(65_536)),
+        ("standing.boost_days", json!(30)),
+        ("standing.slope_q", json!(262_144)),
+        ("standing.mid_q", json!(49_152)),
+        ("standing.kappa_q", json!(131_072)),
+        ("standing.loan_use_q", json!(16_384)),
+        ("voucher.slope.member", json!(0.1)),
+        ("voucher.slope.admin", json!(2.0)),
+        ("voucher.slope.root", json!(25.0)),
+        ("voucher.min.member", json!(1)),
+        ("voucher.min.admin", json!(50)),
+        ("voucher.min.root", json!(500)),
+        ("voucher.max.member", json!(3)),
+        ("voucher.max.admin", json!(100)),
+        ("voucher.max.root", json!(1000)),
+        ("voucher.success.min_days", json!(30)),
+        ("voucher.success.min_conversations", json!(3)),
+        ("voucher.success.max_punishments", json!(1)),
+        ("voucher.brake_cap", json!(1)),
+        ("voucher.reward.enabled", json!(true)),
+        ("voucher.reward.cap", json!(2)),
+    ] {
+        assert_eq!(resolved[key], expected, "{key}");
+    }
+    // Root alone sets the brake threshold.
+    let mut book = book();
+    assert!(
+        book.set_community("voucher.brake_cap", Some(json!(2)))
+            .is_err()
+    );
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn the_rulebook_yields_the_parameters_and_a_changed_value_changes_them() {
+    let mut book = book();
+    let params = book.standing_params().unwrap();
+    assert_eq!(params.c0, 3);
+    assert_eq!(params.voucher.slope_q, [6_554, 131_072, 1_638_400]);
+    assert_eq!(params.voucher.reward_cap, 2);
+    // A community value, a platform value and the reward switch all reach the table.
+    book.set_community("standing.c0", Some(json!(4))).unwrap();
+    book.set_platform(
+        "voucher.slope.member",
+        Some(PlatformValue {
+            value: json!(0.2),
+            force: false,
+        }),
+    )
+    .unwrap();
+    book.set_community("voucher.reward.enabled", Some(json!(false)))
+        .unwrap();
+    let changed = book.standing_params().unwrap();
+    assert_eq!(changed.c0, 4);
+    assert_eq!(changed.voucher.slope_q[0], 13_107);
+    assert_eq!(changed.voucher.reward_cap, 0);
+    // A rulebook that lacks the catalogue yields no parameters.
+    assert!(Rulebook::default().standing_params().is_err());
 }

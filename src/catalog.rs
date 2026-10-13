@@ -29,6 +29,8 @@ pub const VOUCHER_MAX_ADMIN: &str = "voucher.max.admin";
 pub const VOUCHER_MIN_ROOT: &str = "voucher.min.root";
 /// Voucher allowance upper bound for roots.
 pub const VOUCHER_MAX_ROOT: &str = "voucher.max.root";
+/// A pool cap at or below this value counts as braked: no vouchers while braked.
+pub const VOUCHER_BRAKE_CAP: &str = "voucher.brake_cap";
 /// Whether a successful vouchee's own success raises the sponsor's limit.
 pub const VOUCHER_REWARD_ENABLED: &str = "voucher.reward.enabled";
 /// Permanent reward bonus cap per sponsor.
@@ -293,6 +295,16 @@ fn voucher_rows() -> Vec<CatalogEntry> {
             ),
         ));
     }
+    out.push(entry(
+        int(VOUCHER_BRAKE_CAP, 1, 1, 4, Platform),
+        meta(
+            g,
+            "Brake threshold",
+            "A messaging cap at or below this value counts as braked: a braked member cannot hand out vouchers. Root sets it; communities cannot change it.",
+            None,
+            false,
+        ),
+    ));
     out.push(entry(
         flag(VOUCHER_REWARD_ENABLED, true, Community),
         meta(

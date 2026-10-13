@@ -9,6 +9,7 @@ mod policy;
 mod record;
 mod settings;
 mod settlement;
+mod standing;
 mod storage;
 mod waves;
 
@@ -20,6 +21,7 @@ pub use policy::*;
 pub use record::*;
 pub use settings::*;
 pub use settlement::*;
+pub use standing::standing_params;
 pub use storage::*;
 pub use waves::*;
 
