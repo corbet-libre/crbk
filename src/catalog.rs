@@ -65,6 +65,10 @@ pub const SUCCESS_REQUIRE_VOUCHED: &str = "voucher.success.require_vouched";
 pub const CREATE_PER_WEEK: &str = "community.create.per_week";
 /// New communities one person may start per rolling 365 days.
 pub const CREATE_PER_YEAR: &str = "community.create.per_year";
+/// Minimum number of uniqueness-establishing gates a global passport requires (0 for the alpha).
+pub const PASSPORT_MIN_UNIQUENESS_GATES: &str = "passport.min_uniqueness_gates";
+/// Largest value of [`PASSPORT_MIN_UNIQUENESS_GATES`].
+pub const PASSPORT_MIN_UNIQUENESS_GATES_MAX: i64 = 8;
 /// Shortest community address.
 pub const ADDRESS_MIN: &str = "community.address.min_length";
 /// Longest community address.
@@ -512,6 +516,22 @@ fn community_rows() -> Vec<CatalogEntry> {
                 "New communities per year",
                 "How many communities one person may start in a rolling 365 days.",
                 Some("per 365 days"),
+                false,
+            ),
+        ),
+        entry(
+            int(
+                PASSPORT_MIN_UNIQUENESS_GATES,
+                0,
+                0,
+                PASSPORT_MIN_UNIQUENESS_GATES_MAX,
+                Layer::Platform,
+            ),
+            meta(
+                g,
+                "Minimum uniqueness gates",
+                "How many gates that establish one-person uniqueness a global passport needs. Zero accepts a passport without any gate (the alpha).",
+                Some("gates"),
                 false,
             ),
         ),
