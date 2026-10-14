@@ -4,7 +4,7 @@
 //! in code; only these values are settings.
 
 use serde::{Deserialize, Serialize};
-use serde_json::{Number, Value, json};
+use serde_json::{json, Number, Value};
 
 use crate::{Bounds, Layer, PlatformValue, Result, Rulebook, Setting, SettingKind, SettingType};
 
@@ -470,6 +470,58 @@ fn success_rows() -> Vec<CatalogEntry> {
     ]
 }
 
+fn group_rows() -> Vec<CatalogEntry> {
+    let g = "Groups";
+    let row = |key: &str, default: i64, min: i64, max: i64, label: &str, help: &str| {
+        entry(
+            int(key, default, min, max, Layer::Community),
+            meta(g, label, help, Some("members"), false),
+        )
+    };
+    vec![
+        row(
+            "groups.cap",
+            250,
+            4,
+            256,
+            "Public room limit",
+            "Most members a public room shows to users; the technical ceiling is 256.",
+        ),
+        row(
+            "groups.circle_max",
+            12,
+            3,
+            12,
+            "Circle size",
+            "Largest circle that stays hidden; above it a group is an in-group.",
+        ),
+        row(
+            "groups.ingroup_max",
+            42,
+            4,
+            42,
+            "In-group size",
+            "Largest hidden in-group; above it the group must fork into a listed public room.",
+        ),
+        row(
+            "groups.shrink_public",
+            36,
+            4,
+            42,
+            "Public shrink threshold",
+            "A public room that shrinks to this size reverts to a hidden group.",
+        ),
+        row(
+            "groups.shrink_ingroup",
+            10,
+            2,
+            11,
+            "In-group shrink threshold",
+            "An in-group that shrinks to this size reverts to a circle.",
+        ),
+    ]
+}
+
 fn community_rows() -> Vec<CatalogEntry> {
     let g = "Communities";
     let reserved: Vec<&str> = vec![
@@ -751,6 +803,7 @@ pub fn platform_catalog() -> Vec<CatalogEntry> {
     let mut all = voucher_rows();
     all.extend(success_rows());
     all.extend(community_rows());
+    all.extend(group_rows());
     all.extend(standing_rows());
     all
 }
