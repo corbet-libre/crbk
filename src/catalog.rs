@@ -6,7 +6,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value, json};
 
-use crate::{Bounds, Layer, PlatformValue, Result, Rulebook, Setting, SettingKind, SettingType};
+use crate::{
+    Bounds, Error, Layer, PlatformValue, Result, Rulebook, Setting, SettingKind, SettingType, Values,
+};
 
 /// Fixed-point scale of the standing parameters (the proof circuit's Q16).
 pub const Q: u64 = 1 << 16;
@@ -67,6 +69,15 @@ pub const CREATE_PER_WEEK: &str = "community.create.per_week";
 pub const CREATE_PER_YEAR: &str = "community.create.per_year";
 /// Shortest community address.
 pub const ADDRESS_MIN: &str = "community.address.min_length";
+/// Seconds one device pairing may take: the pairing request, the offer on the existing
+/// device and any server-side pending state all derive from this single value.
+pub const PAIRING_WINDOW_SECONDS: &str = "pairing.window_seconds";
+/// Smallest, default and largest pairing window.
+pub const PAIRING_WINDOW_MIN: i64 = 120;
+/// Default pairing window: publication plus a forced read over the real network, with margin.
+pub const PAIRING_WINDOW_DEFAULT: i64 = 600;
+/// Largest pairing window the rulebook accepts.
+pub const PAIRING_WINDOW_MAX: i64 = 900;
 /// Longest community address.
 pub const ADDRESS_MAX: &str = "community.address.max_length";
 /// Root-maintained reserved community addresses.
@@ -526,6 +537,22 @@ fn community_rows() -> Vec<CatalogEntry> {
             ),
         ),
         entry(
+            int(
+                PAIRING_WINDOW_SECONDS,
+                PAIRING_WINDOW_DEFAULT,
+                PAIRING_WINDOW_MIN,
+                PAIRING_WINDOW_MAX,
+                Layer::Platform,
+            ),
+            meta(
+                g,
+                "Device pairing window",
+                "How long one device pairing may take, from the link to the last confirmation.",
+                Some("seconds"),
+                false,
+            ),
+        ),
+        entry(
             int(ADDRESS_MAX, 30, 8, 63, Layer::Platform),
             meta(
                 g,
@@ -816,4 +843,16 @@ impl Rulebook {
         views.sort_by_key(|v| (order(&v.key), v.key.clone()));
         Ok(views)
     }
+}
+
+/// The pairing window the resolved values carry, bounded to the catalogue range.
+pub fn pairing_window(values: &Values) -> Result<u64> {
+    let seconds = match values.get(PAIRING_WINDOW_SECONDS) {
+        None => PAIRING_WINDOW_DEFAULT,
+        Some(value) => value.as_i64().ok_or(Error::Invalid("pairing window"))?,
+    };
+    if !(PAIRING_WINDOW_MIN..=PAIRING_WINDOW_MAX).contains(&seconds) {
+        return Err(Error::Invalid("pairing window"));
+    }
+    Ok(seconds as u64)
 }
