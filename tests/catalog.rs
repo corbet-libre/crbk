@@ -15,7 +15,7 @@ fn every_entry_defines_and_defaults_resolve() {
     let book = book();
     book.validate().unwrap();
     let all = platform_catalog();
-    assert!(all.len() == 48);
+    assert!(all.len() == 53);
     let resolved = book.resolve(&Default::default()).unwrap();
     for entry in &all {
         assert_eq!(resolved[&entry.key], entry.setting.default, "{}", entry.key);
