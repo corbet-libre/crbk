@@ -151,7 +151,7 @@ presence/null combination, exact bounds, force, pinning, policy combinations,
 time/identity/provider mismatches, concurrency, notice, rollback, corruption,
 namespace isolation, persistence and indexed query plans. The optional Turso
 test skips unless both required environment variables are nonempty; no credentials
-are put in the repository or CI. No workstation Cargo runs or registry publishing.
+are put in the repository or CI. No registry publishing.
 CI also checks resolved Cargo metadata for full revision pins and exactly one
 package per Corbet dependency; moving branch/tag pins and split revisions fail.
 

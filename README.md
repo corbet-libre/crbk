@@ -135,7 +135,7 @@ dependencies of this crate.
 GitHub Actions runs stable Rust formatting, strict Clippy and tests, retaining
 the dependency lock as an artifact. A metadata check requires first-party main
 declarations and rejects duplicate packages, including transitive leaves. The
-resolver refreshes the lock once; every substantive check uses that exact snapshot. Do not run Cargo on the workstation. Tests
+resolver refreshes the lock once; every substantive check uses that exact snapshot. Tests
 cover the full sparse read chain, nulls, force, exact integer bounds, template
 pinning, member authority, gate decisions, prospective revisions, stale writers,
 namespace isolation, database reopen, query plans, corruption and transaction
