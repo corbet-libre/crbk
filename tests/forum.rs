@@ -51,9 +51,10 @@ fn the_quota_is_a_community_setting_within_bounds() {
         json!("3"),
         json!(FORUM_ROOM_PASSES_PER_EPOCH_MAX + 1),
     ] {
-        assert!(book
-            .set_community(FORUM_ROOM_PASSES_PER_EPOCH, Some(bad))
-            .is_err());
+        assert!(
+            book.set_community(FORUM_ROOM_PASSES_PER_EPOCH, Some(bad))
+                .is_err()
+        );
     }
     book.set_community(
         FORUM_ROOM_PASSES_PER_EPOCH,
@@ -93,10 +94,7 @@ fn clients_are_accepted_by_semver_precedence() {
         ("0.2.1", true),
         ("1.0.0", true),
     ] {
-        assert_eq!(
-            settings.accepts_client(&version.parse().unwrap()),
-            accepted
-        );
+        assert_eq!(settings.accepts_client(&version.parse().unwrap()), accepted);
     }
 }
 
