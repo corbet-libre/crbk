@@ -15,29 +15,24 @@ pub const FORUM_LEASE_MS: u64 = 60_000;
 pub const FORUM_MINIMUM_CLIENT_VERSION: &str = "0.2.0";
 /// Total blind room passes issued to a member in one common epoch, across rooms.
 pub const FORUM_ROOM_PASSES_PER_EPOCH: &str = "forum.room_passes_per_epoch";
-/// Default of [`FORUM_ROOM_PASSES_PER_EPOCH`]: sized so an active honest member never hits
-/// it within one epoch; a community may lower or raise it.
-pub const FORUM_ROOM_PASSES_PER_EPOCH_DEFAULT: u64 = 32;
-/// Upper bound of the room-pass quota.
-pub const FORUM_ROOM_PASSES_PER_EPOCH_MAX: u64 = 256;
-
 // Exact integer ceiling shared by native and JavaScript wire consumers.
 const MAX_WIRE_INTEGER: u64 = (1 << 53) - 1;
 
 /// Add the Forum policy setting (the room-pass quota k) without replacing an existing
-/// catalogue. Heartbeat, lease and minimum client version are code constants, not
-/// settings. Member and template overrides are forbidden by the ordinary resolver.
+/// catalogue. Null means unconfigured, never a usable product default: the platform or
+/// community owner must supply the value (Julian decides policy defaults) before Forum can
+/// start. Heartbeat, lease and minimum client version are code constants, not settings.
 pub fn define_forum_settings(book: &mut Rulebook) -> Result<()> {
     if !book.catalog().contains_key(FORUM_ROOM_PASSES_PER_EPOCH) {
         book.define(
             FORUM_ROOM_PASSES_PER_EPOCH,
             Setting {
                 value_type: SettingType::Integer,
-                nullable: false,
-                default: serde_json::Value::from(FORUM_ROOM_PASSES_PER_EPOCH_DEFAULT),
+                nullable: true,
+                default: serde_json::Value::Null,
                 bounds: Bounds {
                     min: Some(1.into()),
-                    max: Some(FORUM_ROOM_PASSES_PER_EPOCH_MAX.into()),
+                    max: Some(MAX_WIRE_INTEGER.into()),
                 },
                 lowest_layer: Layer::Community,
                 kind: SettingKind::Technical,
@@ -73,7 +68,9 @@ impl ForumSettings {
             .get(FORUM_ROOM_PASSES_PER_EPOCH)
             .and_then(|v| v.as_u64())
             .filter(|n| *n > 0 && *n <= MAX_WIRE_INTEGER)
-            .ok_or(Error::Invalid("forum positive integer"))?;
+            .ok_or(Error::Invalid(
+                "forum.room_passes_per_epoch is not configured (a positive integer is required)",
+            ))?;
         Ok(Self {
             heartbeat_ms: FORUM_HEARTBEAT_MS,
             lease_ms: FORUM_LEASE_MS,

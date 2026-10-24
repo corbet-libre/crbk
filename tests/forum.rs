@@ -20,9 +20,24 @@ fn book() -> Rulebook {
     book
 }
 
+fn configured(k: u64) -> Rulebook {
+    let mut book = book();
+    // Synthetic fixture value, not a product default.
+    book.set_community(FORUM_ROOM_PASSES_PER_EPOCH, Some(json!(k)))
+        .unwrap();
+    book
+}
+
 #[test]
-fn a_new_community_projects_into_forum_settings_without_configuration() {
-    let settings = ForumSettings::from_snapshot(&snapshot(&book())).unwrap();
+fn the_quota_has_no_default_and_an_unconfigured_one_is_refused_by_name() {
+    let error = ForumSettings::from_snapshot(&snapshot(&book())).unwrap_err();
+    assert!(error.to_string().contains(FORUM_ROOM_PASSES_PER_EPOCH));
+}
+
+#[test]
+fn a_configured_community_projects_into_forum_settings() {
+    let settings = ForumSettings::from_snapshot(&snapshot(&configured(7))).unwrap();
+    assert_eq!(settings.room_passes_per_epoch, 7);
     assert_eq!(settings.heartbeat_ms, FORUM_HEARTBEAT_MS);
     assert_eq!(settings.lease_ms, FORUM_LEASE_MS);
     assert!(settings.heartbeat_ms < settings.lease_ms);
@@ -30,42 +45,30 @@ fn a_new_community_projects_into_forum_settings_without_configuration() {
         settings.minimum_client_version,
         semver::Version::parse(FORUM_MINIMUM_CLIENT_VERSION).unwrap()
     );
-    assert_eq!(
-        settings.room_passes_per_epoch,
-        FORUM_ROOM_PASSES_PER_EPOCH_DEFAULT
-    );
+    let edge = configured((1u64 << 53) - 1);
+    assert!(ForumSettings::from_snapshot(&snapshot(&edge)).is_ok());
 }
 
 #[test]
-fn the_quota_is_a_community_setting_within_bounds() {
-    let mut book = book();
-    book.set_community(FORUM_ROOM_PASSES_PER_EPOCH, Some(json!(7)))
-        .unwrap();
-    let settings = ForumSettings::from_snapshot(&snapshot(&book)).unwrap();
-    assert_eq!(settings.room_passes_per_epoch, 7);
+fn the_quota_rejects_unusable_values() {
     for bad in [
-        json!(null),
         json!(0),
         json!(-1),
         json!(1.5),
         json!("3"),
-        json!(FORUM_ROOM_PASSES_PER_EPOCH_MAX + 1),
+        json!(1u64 << 53),
     ] {
         assert!(
-            book.set_community(FORUM_ROOM_PASSES_PER_EPOCH, Some(bad))
+            book()
+                .set_community(FORUM_ROOM_PASSES_PER_EPOCH, Some(bad))
                 .is_err()
         );
     }
-    book.set_community(
-        FORUM_ROOM_PASSES_PER_EPOCH,
-        Some(json!(FORUM_ROOM_PASSES_PER_EPOCH_MAX)),
-    )
-    .unwrap();
 }
 
 #[test]
 fn the_mechanics_are_not_settings() {
-    let mut book = book();
+    let mut book = configured(7);
     for key in [
         "forum.heartbeat_ms",
         "forum.lease_ms",
@@ -85,7 +88,7 @@ fn the_mechanics_are_not_settings() {
 
 #[test]
 fn clients_are_accepted_by_semver_precedence() {
-    let settings = ForumSettings::from_snapshot(&snapshot(&book())).unwrap();
+    let settings = ForumSettings::from_snapshot(&snapshot(&configured(7))).unwrap();
     for (version, accepted) in [
         ("0.1.9", false),
         ("0.2.0-rc.1", false),
@@ -100,7 +103,7 @@ fn clients_are_accepted_by_semver_precedence() {
 
 #[test]
 fn an_unusable_quota_in_a_snapshot_is_refused() {
-    let valid = snapshot(&book());
+    let valid = snapshot(&configured(7));
     for bad in [
         json!(null),
         json!(0),

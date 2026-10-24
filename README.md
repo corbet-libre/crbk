@@ -94,7 +94,7 @@ Forum's technical mechanics are code constants in `forum.rs`, never settings:
 `FORUM_HEARTBEAT_MS` (15 s), `FORUM_LEASE_MS` (60 s, four heartbeats) and
 `FORUM_MINIMUM_CLIENT_VERSION` (the cmsg release this release requires). The optional
 `define_forum_settings` catalogue holds only the policy quota
-`forum.room_passes_per_epoch` (default 32, bounds 1..=256, Community layer).
+`forum.room_passes_per_epoch` (nullable, **no default**: the platform or community supplies it; Community layer).
 `ForumSettings::from_snapshot` takes the three constants from code and projects the
 quota from the original authenticated settings snapshot, requiring a positive exact
 wire integer (at most 2^53−1). The quota is total per member/common epoch,
