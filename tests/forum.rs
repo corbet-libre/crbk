@@ -14,140 +14,110 @@ fn snapshot(book: &Rulebook) -> Snapshot {
     }
 }
 
-fn configured() -> Rulebook {
+fn book() -> Rulebook {
     let mut book = Rulebook::default();
     define_forum_settings(&mut book).unwrap();
-    // Synthetic fixture values, not production defaults.
-    for (key, value) in [
-        (FORUM_HEARTBEAT_MS, json!(3000)),
-        (FORUM_LEASE_MS, json!(10000)),
-        (FORUM_MINIMUM_CLIENT_VERSION, json!("1.2.0+owner")),
-        (FORUM_ROOM_PASSES_PER_EPOCH, json!(7)),
-    ] {
-        book.set_community(key, Some(value)).unwrap();
-    }
     book
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
-#[cfg_attr(not(target_arch = "wasm32"), test)]
-fn explicit_configuration_resolves_with_original_layer_authority() {
-    let mut book = Rulebook::default();
-    assert!(ForumSettings::from_snapshot(&snapshot(&book)).is_err());
-    define_forum_settings(&mut book).unwrap();
-    let original = book.clone();
-    define_forum_settings(&mut book).unwrap();
-    assert_eq!(book, original);
-    assert!(ForumSettings::from_snapshot(&snapshot(&book)).is_err());
-    book = configured();
-    let projection = ForumSettings::from_snapshot(&snapshot(&book)).unwrap();
-    assert_eq!(projection.heartbeat_ms, 3000);
-    assert_eq!(projection.lease_ms, 10000);
-    assert_eq!(projection.room_passes_per_epoch, 7);
+#[test]
+fn a_new_community_projects_into_forum_settings_without_configuration() {
+    let settings = ForumSettings::from_snapshot(&snapshot(&book())).unwrap();
+    assert_eq!(settings.heartbeat_ms, FORUM_HEARTBEAT_MS);
+    assert_eq!(settings.lease_ms, FORUM_LEASE_MS);
+    assert!(settings.heartbeat_ms < settings.lease_ms);
+    assert_eq!(
+        settings.minimum_client_version,
+        semver::Version::parse(FORUM_MINIMUM_CLIENT_VERSION).unwrap()
+    );
+    assert_eq!(
+        settings.room_passes_per_epoch,
+        FORUM_ROOM_PASSES_PER_EPOCH_DEFAULT
+    );
+}
+
+#[test]
+fn the_quota_is_a_community_setting_within_bounds() {
+    let mut book = book();
+    book.set_community(FORUM_ROOM_PASSES_PER_EPOCH, Some(json!(7)))
+        .unwrap();
+    let settings = ForumSettings::from_snapshot(&snapshot(&book)).unwrap();
+    assert_eq!(settings.room_passes_per_epoch, 7);
+    for bad in [
+        json!(null),
+        json!(0),
+        json!(-1),
+        json!(1.5),
+        json!("3"),
+        json!(FORUM_ROOM_PASSES_PER_EPOCH_MAX + 1),
+    ] {
+        assert!(book
+            .set_community(FORUM_ROOM_PASSES_PER_EPOCH, Some(bad))
+            .is_err());
+    }
+    book.set_community(
+        FORUM_ROOM_PASSES_PER_EPOCH,
+        Some(json!(FORUM_ROOM_PASSES_PER_EPOCH_MAX)),
+    )
+    .unwrap();
+}
+
+#[test]
+fn the_mechanics_are_not_settings() {
+    let mut book = book();
+    for key in [
+        "forum.heartbeat_ms",
+        "forum.lease_ms",
+        "forum.minimum_client_version",
+    ] {
+        assert!(!book.catalog().contains_key(key));
+        assert!(book.set_community(key, Some(json!(1))).is_err());
+    }
+    // A snapshot that carries them anyway cannot change the projection.
+    let mut snap = snapshot(&book);
+    snap.content.insert("forum.lease_ms".into(), json!(1));
+    snap.content.insert("forum.heartbeat_ms".into(), json!(1));
+    let settings = ForumSettings::from_snapshot(&snap).unwrap();
+    assert_eq!(settings.lease_ms, FORUM_LEASE_MS);
+    assert_eq!(settings.heartbeat_ms, FORUM_HEARTBEAT_MS);
+}
+
+#[test]
+fn clients_are_accepted_by_semver_precedence() {
+    let settings = ForumSettings::from_snapshot(&snapshot(&book())).unwrap();
     for (version, accepted) in [
-        ("1.1.99", false),
-        ("1.2.0-rc.1", false),
-        ("1.2.0", true),
-        ("1.2.0+different", true),
-        ("1.2.1", true),
-        ("2.0.0", true),
+        ("0.1.9", false),
+        ("0.2.0-rc.1", false),
+        ("0.2.0", true),
+        ("0.2.0+build", true),
+        ("0.2.1", true),
+        ("1.0.0", true),
     ] {
         assert_eq!(
-            projection.accepts_client(&version.parse().unwrap()),
+            settings.accepts_client(&version.parse().unwrap()),
             accepted
         );
     }
-    for key in [
-        FORUM_HEARTBEAT_MS,
-        FORUM_LEASE_MS,
-        FORUM_ROOM_PASSES_PER_EPOCH,
-        FORUM_MINIMUM_CLIENT_VERSION,
-    ] {
-        assert!(
-            book.resolve(&Values::from([(key.into(), json!(null))]))
-                .is_err()
-        );
-    }
-    book.set_platform(
-        FORUM_ROOM_PASSES_PER_EPOCH,
-        Some(PlatformValue {
-            value: json!(3),
-            force: true,
-        }),
-    )
-    .unwrap();
-    assert_eq!(
-        ForumSettings::from_snapshot(&snapshot(&book))
-            .unwrap()
-            .room_passes_per_epoch,
-        3
-    );
-    // An explicit null terminates inheritance and disables usable configuration.
-    book.set_community(FORUM_LEASE_MS, Some(json!(null)))
-        .unwrap();
-    assert!(ForumSettings::from_snapshot(&snapshot(&book)).is_err());
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
-#[cfg_attr(not(target_arch = "wasm32"), test)]
-fn missing_or_inconsistent_signed_values_fail_closed() {
-    let valid = snapshot(&configured());
-    for key in [
-        FORUM_HEARTBEAT_MS,
-        FORUM_LEASE_MS,
-        FORUM_ROOM_PASSES_PER_EPOCH,
-        FORUM_MINIMUM_CLIENT_VERSION,
-    ] {
-        let mut missing = valid.clone();
-        missing.content.remove(key);
-        assert!(ForumSettings::from_snapshot(&missing).is_err());
-    }
-    for key in [
-        FORUM_HEARTBEAT_MS,
-        FORUM_LEASE_MS,
-        FORUM_ROOM_PASSES_PER_EPOCH,
-    ] {
-        for bad in [
-            json!(null),
-            json!(0),
-            json!(-1),
-            json!(1.5),
-            json!("3"),
-            json!(1u64 << 53),
-        ] {
-            let mut invalid = valid.clone();
-            invalid.content.insert(key.into(), bad.clone());
-            assert!(ForumSettings::from_snapshot(&invalid).is_err());
-            if !bad.is_null() {
-                assert!(configured().set_community(key, Some(bad)).is_err());
-            }
-        }
-    }
+#[test]
+fn an_unusable_quota_in_a_snapshot_is_refused() {
+    let valid = snapshot(&book());
     for bad in [
         json!(null),
-        json!(1),
-        json!("1.2"),
-        json!("01.2.0"),
-        json!("^1.2.0"),
-        json!("1.2.0 "),
+        json!(0),
+        json!(-1),
+        json!(1.5),
+        json!("3"),
+        json!(1u64 << 53),
     ] {
         let mut invalid = valid.clone();
         invalid
             .content
-            .insert(FORUM_MINIMUM_CLIENT_VERSION.into(), bad);
+            .insert(FORUM_ROOM_PASSES_PER_EPOCH.into(), bad);
         assert!(ForumSettings::from_snapshot(&invalid).is_err());
     }
-    for heartbeat in [10000, 10001] {
-        let mut invalid = valid.clone();
-        invalid
-            .content
-            .insert(FORUM_HEARTBEAT_MS.into(), json!(heartbeat));
-        assert!(ForumSettings::from_snapshot(&invalid).is_err());
-    }
-    let mut edge = valid;
-    edge.content
-        .insert(FORUM_LEASE_MS.into(), json!((1u64 << 53) - 1));
-    edge.content
-        .insert(FORUM_ROOM_PASSES_PER_EPOCH.into(), json!((1u64 << 53) - 1));
-    assert!(ForumSettings::from_snapshot(&edge).is_ok());
+    let mut missing = valid;
+    missing.content.remove(FORUM_ROOM_PASSES_PER_EPOCH);
+    assert!(ForumSettings::from_snapshot(&missing).is_err());
 }

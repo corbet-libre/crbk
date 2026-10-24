@@ -2,54 +2,47 @@
 
 use crate::{Bounds, Error, Layer, Result, Rulebook, Setting, SettingKind, SettingType, Snapshot};
 
-/// Interval between member presence heartbeats, in milliseconds.
-pub const FORUM_HEARTBEAT_MS: &str = "forum.heartbeat_ms";
-/// Maximum presence lease requested by Forum, in milliseconds.
-pub const FORUM_LEASE_MS: &str = "forum.lease_ms";
-/// Minimum supported cmsg runtime version, as a complete SemVer string.
-pub const FORUM_MINIMUM_CLIENT_VERSION: &str = "forum.minimum_client_version";
+/// Interval between member presence heartbeats, in milliseconds. A technical mechanic
+/// (it either works or it does not), so a code constant, never a rulebook setting.
+/// 15 s keeps presence traffic low while a lost beat is noticed within one lease.
+pub const FORUM_HEARTBEAT_MS: u64 = 15_000;
+/// Maximum presence lease requested by Forum, in milliseconds: four heartbeats, so it
+/// tolerates Tor latency spikes of several seconds and a lost beat. Must not exceed the
+/// relay's `maximum_lease_ms` ceiling (checked when the relay loads its configuration).
+pub const FORUM_LEASE_MS: u64 = 60_000;
+/// Minimum supported cmsg runtime version, as a complete SemVer string: the cmsg
+/// release this release requires.
+pub const FORUM_MINIMUM_CLIENT_VERSION: &str = "0.2.0";
 /// Total blind room passes issued to a member in one common epoch, across rooms.
 pub const FORUM_ROOM_PASSES_PER_EPOCH: &str = "forum.room_passes_per_epoch";
+/// Default of [`FORUM_ROOM_PASSES_PER_EPOCH`]: sized so an active honest member never hits
+/// it within one epoch; a community may lower or raise it.
+pub const FORUM_ROOM_PASSES_PER_EPOCH_DEFAULT: u64 = 32;
+/// Upper bound of the room-pass quota.
+pub const FORUM_ROOM_PASSES_PER_EPOCH_MAX: u64 = 256;
 
 // Exact integer ceiling shared by native and JavaScript wire consumers.
 const MAX_WIRE_INTEGER: u64 = (1 << 53) - 1;
 
-/// Add required Forum settings without replacing an existing catalogue.
-/// Null means unconfigured, never a usable product default. Platform/community
-/// owners must supply explicit values before Forum can start. Member overrides
-/// and template overrides are forbidden by the ordinary resolver.
+/// Add the Forum policy setting (the room-pass quota k) without replacing an existing
+/// catalogue. Heartbeat, lease and minimum client version are code constants, not
+/// settings. Member and template overrides are forbidden by the ordinary resolver.
 pub fn define_forum_settings(book: &mut Rulebook) -> Result<()> {
-    for key in [
-        FORUM_HEARTBEAT_MS,
-        FORUM_LEASE_MS,
-        FORUM_ROOM_PASSES_PER_EPOCH,
-        FORUM_MINIMUM_CLIENT_VERSION,
-    ] {
-        if !book.catalog().contains_key(key) {
-            let numeric = key != FORUM_MINIMUM_CLIENT_VERSION;
-            book.define(
-                key,
-                Setting {
-                    value_type: if numeric {
-                        SettingType::Integer
-                    } else {
-                        SettingType::String
-                    },
-                    nullable: true,
-                    default: serde_json::Value::Null,
-                    bounds: if numeric {
-                        Bounds {
-                            min: Some(1.into()),
-                            max: Some(MAX_WIRE_INTEGER.into()),
-                        }
-                    } else {
-                        Bounds::default()
-                    },
-                    lowest_layer: Layer::Community,
-                    kind: SettingKind::Technical,
+    if !book.catalog().contains_key(FORUM_ROOM_PASSES_PER_EPOCH) {
+        book.define(
+            FORUM_ROOM_PASSES_PER_EPOCH,
+            Setting {
+                value_type: SettingType::Integer,
+                nullable: false,
+                default: serde_json::Value::from(FORUM_ROOM_PASSES_PER_EPOCH_DEFAULT),
+                bounds: Bounds {
+                    min: Some(1.into()),
+                    max: Some(FORUM_ROOM_PASSES_PER_EPOCH_MAX.into()),
                 },
-            )?;
-        }
+                lowest_layer: Layer::Community,
+                kind: SettingKind::Technical,
+            },
+        )?;
     }
     Ok(())
 }
@@ -71,33 +64,22 @@ pub struct ForumSettings {
 }
 
 impl ForumSettings {
-    /// Refuse absent, unconfigured, wrongly typed, out-of-range or inconsistent
-    /// settings. There are no fallback timing, version or quota values.
+    /// Heartbeat, lease and minimum client version are the code constants; only the
+    /// room-pass quota is read from the snapshot, which must hold a positive exact wire
+    /// integer for it.
     pub fn from_snapshot(snapshot: &Snapshot) -> Result<Self> {
-        let positive = |key| {
-            snapshot
-                .content
-                .get(key)
-                .and_then(|v| v.as_u64())
-                .filter(|n| *n > 0 && *n <= MAX_WIRE_INTEGER)
-                .ok_or(Error::Invalid("forum positive integer"))
-        };
-        let heartbeat_ms = positive(FORUM_HEARTBEAT_MS)?;
-        let lease_ms = positive(FORUM_LEASE_MS)?;
-        if heartbeat_ms >= lease_ms {
-            return Err(Error::Invalid("forum heartbeat must precede lease"));
-        }
-        let minimum_client_version = snapshot
+        let room_passes_per_epoch = snapshot
             .content
-            .get(FORUM_MINIMUM_CLIENT_VERSION)
-            .and_then(|v| v.as_str())
-            .and_then(|v| semver::Version::parse(v).ok())
-            .ok_or(Error::Invalid("forum minimum client version"))?;
+            .get(FORUM_ROOM_PASSES_PER_EPOCH)
+            .and_then(|v| v.as_u64())
+            .filter(|n| *n > 0 && *n <= MAX_WIRE_INTEGER)
+            .ok_or(Error::Invalid("forum positive integer"))?;
         Ok(Self {
-            heartbeat_ms,
-            lease_ms,
-            minimum_client_version,
-            room_passes_per_epoch: positive(FORUM_ROOM_PASSES_PER_EPOCH)?,
+            heartbeat_ms: FORUM_HEARTBEAT_MS,
+            lease_ms: FORUM_LEASE_MS,
+            minimum_client_version: semver::Version::parse(FORUM_MINIMUM_CLIENT_VERSION)
+                .map_err(|_| Error::Invalid("forum minimum client version"))?,
+            room_passes_per_epoch,
         })
     }
 

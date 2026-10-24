@@ -90,15 +90,17 @@ login tracking, raw gate data, environment-reading production code or signing ke
 
 ## Dependency survey
 
-The optional `define_forum_settings` catalogue has **no usable defaults**.
-`forum.heartbeat_ms`, `forum.lease_ms`, `forum.minimum_client_version`, and
-`forum.room_passes_per_epoch` must be explicitly configured by the platform or
-community. `ForumSettings::from_snapshot` projects the original authenticated
-settings snapshot, rejects null/missing values, requires positive exact wire
-integers (at most 2^53−1), and requires heartbeat shorter than lease. The quota
-is total per member/common epoch, independent of rooms. Forum still clamps
-leases to its storage TTL and current credential/authority deadline; this
-projection neither authenticates snapshots nor performs issuance.
+Forum's technical mechanics are code constants in `forum.rs`, never settings:
+`FORUM_HEARTBEAT_MS` (15 s), `FORUM_LEASE_MS` (60 s, four heartbeats) and
+`FORUM_MINIMUM_CLIENT_VERSION` (the cmsg release this release requires). The optional
+`define_forum_settings` catalogue holds only the policy quota
+`forum.room_passes_per_epoch` (default 32, bounds 1..=256, Community layer).
+`ForumSettings::from_snapshot` takes the three constants from code and projects the
+quota from the original authenticated settings snapshot, requiring a positive exact
+wire integer (at most 2^53−1). The quota is total per member/common epoch,
+independent of rooms. Forum still clamps leases to its storage TTL and current
+credential/authority deadline; this projection neither authenticates snapshots nor
+performs issuance.
 
 The maintained MIT/Apache-2.0 [semver](https://docs.rs/semver/latest/semver/struct.Version.html)
 crate was selected on 2026-10-02 for parsing and minimum-version precedence.
