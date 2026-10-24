@@ -1,6 +1,6 @@
-//! Required Forum settings in the original sparse community catalogue.
+//! Forum mechanics: code constants, projected as the typed settings Forum consumes.
 
-use crate::{Bounds, Error, Layer, Result, Rulebook, Setting, SettingKind, SettingType, Snapshot};
+use crate::{Error, Result, Rulebook, Snapshot};
 
 /// Interval between member presence heartbeats, in milliseconds. A technical mechanic
 /// (it either works or it does not), so a code constant, never a rulebook setting.
@@ -13,32 +13,19 @@ pub const FORUM_LEASE_MS: u64 = 60_000;
 /// Minimum supported cmsg runtime version, as a complete SemVer string: the cmsg
 /// release this release requires.
 pub const FORUM_MINIMUM_CLIENT_VERSION: &str = "0.2.0";
-/// Total blind room passes issued to a member in one common epoch, across rooms.
-pub const FORUM_ROOM_PASSES_PER_EPOCH: &str = "forum.room_passes_per_epoch";
-// Exact integer ceiling shared by native and JavaScript wire consumers.
-const MAX_WIRE_INTEGER: u64 = (1 << 53) - 1;
+/// Length of the common epoch, in seconds (settlement refuses any other period).
+pub const FORUM_EPOCH_SECONDS: u64 = 86_400;
+/// Total blind room passes issued to a member in one common epoch, across rooms: an
+/// anti-abuse brake honest members never notice, so a code constant. A pass is spent per
+/// room entry and a room is kept for far longer than a presence lease, so 1 024 entries
+/// in the 86 400 s common epoch (one every 84 s, all day, without ever staying) is beyond
+/// any human; only automation hits the brake. 1 024 is also the most the blind-pass issuer
+/// supports (`cmbl` MAX_PASSES; cgth refuses anything above), so it is the highest value.
+pub const FORUM_ROOM_PASSES_PER_EPOCH: u64 = 1024;
 
-/// Add the Forum policy setting (the room-pass quota k) without replacing an existing
-/// catalogue. Null means unconfigured, never a usable product default: the platform or
-/// community owner must supply the value (Julian decides policy defaults) before Forum can
-/// start. Heartbeat, lease and minimum client version are code constants, not settings.
-pub fn define_forum_settings(book: &mut Rulebook) -> Result<()> {
-    if !book.catalog().contains_key(FORUM_ROOM_PASSES_PER_EPOCH) {
-        book.define(
-            FORUM_ROOM_PASSES_PER_EPOCH,
-            Setting {
-                value_type: SettingType::Integer,
-                nullable: true,
-                default: serde_json::Value::Null,
-                bounds: Bounds {
-                    min: Some(1.into()),
-                    max: Some(MAX_WIRE_INTEGER.into()),
-                },
-                lowest_layer: Layer::Community,
-                kind: SettingKind::Technical,
-            },
-        )?;
-    }
+/// Forum defines no rulebook settings: heartbeat, lease, minimum client version and the
+/// room-pass quota are code constants. Kept so callers need no change; adds nothing.
+pub fn define_forum_settings(_book: &mut Rulebook) -> Result<()> {
     Ok(())
 }
 
@@ -59,24 +46,15 @@ pub struct ForumSettings {
 }
 
 impl ForumSettings {
-    /// Heartbeat, lease and minimum client version are the code constants; only the
-    /// room-pass quota is read from the snapshot, which must hold a positive exact wire
-    /// integer for it.
-    pub fn from_snapshot(snapshot: &Snapshot) -> Result<Self> {
-        let room_passes_per_epoch = snapshot
-            .content
-            .get(FORUM_ROOM_PASSES_PER_EPOCH)
-            .and_then(|v| v.as_u64())
-            .filter(|n| *n > 0 && *n <= MAX_WIRE_INTEGER)
-            .ok_or(Error::Invalid(
-                "forum.room_passes_per_epoch is not configured (a positive integer is required)",
-            ))?;
+    /// Every field is a code constant; the snapshot is accepted as the authenticated
+    /// settings of a community and nothing in it can change them.
+    pub fn from_snapshot(_snapshot: &Snapshot) -> Result<Self> {
         Ok(Self {
             heartbeat_ms: FORUM_HEARTBEAT_MS,
             lease_ms: FORUM_LEASE_MS,
             minimum_client_version: semver::Version::parse(FORUM_MINIMUM_CLIENT_VERSION)
                 .map_err(|_| Error::Invalid("forum minimum client version"))?,
-            room_passes_per_epoch,
+            room_passes_per_epoch: FORUM_ROOM_PASSES_PER_EPOCH,
         })
     }
 

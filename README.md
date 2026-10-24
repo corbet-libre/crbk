@@ -90,17 +90,15 @@ login tracking, raw gate data, environment-reading production code or signing ke
 
 ## Dependency survey
 
-Forum's technical mechanics are code constants in `forum.rs`, never settings:
-`FORUM_HEARTBEAT_MS` (15 s), `FORUM_LEASE_MS` (60 s, four heartbeats) and
-`FORUM_MINIMUM_CLIENT_VERSION` (the cmsg release this release requires). The optional
-`define_forum_settings` catalogue holds only the policy quota
-`forum.room_passes_per_epoch` (nullable, **no default**: the platform or community supplies it; Community layer).
-`ForumSettings::from_snapshot` takes the three constants from code and projects the
-quota from the original authenticated settings snapshot, requiring a positive exact
-wire integer (at most 2^53−1). The quota is total per member/common epoch,
-independent of rooms. Forum still clamps leases to its storage TTL and current
-credential/authority deadline; this projection neither authenticates snapshots nor
-performs issuance.
+Forum's mechanics are code constants in `forum.rs`, never settings: `FORUM_HEARTBEAT_MS`
+(15 s), `FORUM_LEASE_MS` (60 s, four heartbeats), `FORUM_MINIMUM_CLIENT_VERSION` (the cmsg
+release this release requires) and `FORUM_ROOM_PASSES_PER_EPOCH` (1 024, the issuer's
+maximum: one room entry every 84 s for the whole 86 400 s common epoch; an anti-abuse brake
+honest members never notice).
+`define_forum_settings` defines nothing; `ForumSettings::from_snapshot` returns the constants.
+The quota is total per member/common epoch, independent of rooms. Forum still clamps leases
+to its storage TTL and current credential/authority deadline; this projection neither
+authenticates snapshots nor performs issuance.
 
 The maintained MIT/Apache-2.0 [semver](https://docs.rs/semver/latest/semver/struct.Version.html)
 crate was selected on 2026-10-02 for parsing and minimum-version precedence.
