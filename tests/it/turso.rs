@@ -1,9 +1,7 @@
 //! Opt-in round trip against a caller-supplied disposable Turso database.
 #![cfg(all(feature = "sql", not(target_arch = "wasm32")))]
 
-mod common;
-
-use common::*;
+use crate::common::*;
 use crbk::*;
 
 #[tokio::test]

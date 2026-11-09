@@ -105,7 +105,7 @@ jobs:
     - name: Execute identical policy vectors on wasm32
       env:
         CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
-      run: cargo test --locked --no-default-features --target wasm32-unknown-unknown --test policies --test settings --test membership --test group_defaults
+      run: cargo test --locked --no-default-features --target wasm32-unknown-unknown --test it
     needs:
     - resolve
   dependency-policy:

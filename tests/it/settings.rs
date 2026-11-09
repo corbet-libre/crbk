@@ -1,8 +1,6 @@
 //! Sparse resolution, validation and template pinning contract.
 
-mod common;
-
-use common::*;
+use crate::common::*;
 use crbk::*;
 use serde_json::{Value, json};
 

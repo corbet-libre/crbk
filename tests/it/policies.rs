@@ -1,8 +1,6 @@
 //! Pure gate decisions, proof boundaries and missing alternatives.
 
-mod common;
-
-use common::*;
+use crate::common::*;
 use crbk::*;
 use serde_json::json;
 

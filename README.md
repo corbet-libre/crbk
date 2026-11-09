@@ -141,7 +141,7 @@ pinning, member authority, gate decisions, prospective revisions, stale writers,
 namespace isolation, database reopen, query plans, corruption and transaction
 rollback. Both storage implementations run the same round-trip scenario.
 
-`tests/turso.rs` runs only when both `TURSO_URL` and `TURSO_TOKEN` are nonempty;
+`tests/it/turso.rs` runs only when both `TURSO_URL` and `TURSO_TOKEN` are nonempty;
 otherwise it prints a skip reason. Run it against a **disposable test database**:
 it applies schema and retains isolated test rows. No credentials are stored in
 the repository or configured in CI. Never publish this crate to a registry.

@@ -1,9 +1,7 @@
 //! Shared backend contract and real libSQL transaction failure cases.
 #![cfg(all(feature = "sql", not(target_arch = "wasm32")))]
 
-mod common;
-
-use common::*;
+use crate::common::*;
 use crbk::*;
 use serde_json::json;
 
