@@ -1,7 +1,6 @@
 //! Persistence mechanics only; real member authorization is tested by the host.
 #![cfg(all(feature = "sql", not(target_arch = "wasm32")))]
-mod common;
-use common::*;
+use crate::common::*;
 use crbk::*;
 use std::{sync::Arc, time::Duration};
 
