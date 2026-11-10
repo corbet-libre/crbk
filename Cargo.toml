@@ -18,7 +18,7 @@ sql = ["dep:crlt"]
 crlt = { git = "https://git.corbet.ch/corbet-libre/crlt.git", branch = "main", optional = true }
 
 [dependencies]
-czkp = { git = "https://git.corbet.ch/corbet-foss/czkp.git", branch = "main" }
+czkp = { git = "https://git.corbet.ch/corbet-libre/czkp.git", branch = "main" }
 semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["arbitrary_precision"] }
