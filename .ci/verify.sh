@@ -9,7 +9,6 @@ touch "$GITHUB_PATH"
 
 python3 .github/check-first-party.py
 node --test .github/check-pins.test.mjs
-bash .ci/update-our-crates.sh
 cargo metadata --locked --all-features --format-version 1 > dependency-metadata.json
 rustc --version
 cargo fmt --all --check
